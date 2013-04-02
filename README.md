@@ -13,7 +13,7 @@ This is a pure python library.  For reading the FITS files, the fitsio python
 package is used.  fitsio https://github.com/esheldon/fitsio
 
 MEDS python Docs are here
-    https://github.com/esheldon/deswl/blob/master/deswl/meds.py
+    https://github.com/esheldon/meds/blob/master/meds/meds.py
 
 installing the python library
 #############################
