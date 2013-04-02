@@ -9,23 +9,24 @@ Description of the file format here
 python library
 -----------------------------
 
-this is a pure python library.  For reading the FITS files, the fitsio package
-is used.  fitsio https://github.com/esheldon/fitsio
+This is a pure python library.  For reading the FITS files, the fitsio python
+package is used.  fitsio https://github.com/esheldon/fitsio
 
 MEDS python Docs are here
     https://github.com/esheldon/deswl/blob/master/deswl/meds.py
 
-
 installing the python library
 #############################
 
-    # install in the usual place
+install in the usual place
+
     python setup.py install
 
-    # at a different prefix
+at a different prefix
+
     python setup.py install --prefix=/some/path
 
-    # make sure it is on your PYTHONPATH
+make sure it is on your PYTHONPATH
 
 
 C library
