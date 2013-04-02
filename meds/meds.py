@@ -19,6 +19,8 @@ See docs for the MEDS class for more info
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import fitsio
+
 class MEDS(object):
     """
     Class to work with MEDS (Multi Epoch Data Structures)
@@ -129,7 +131,6 @@ class MEDS(object):
     fitsio https://github.com/esheldon/fitsio
     """
     def __init__(self, filename):
-        import fitsio
         self._filename=filename
         
         self._fits=fitsio.FITS(filename)
