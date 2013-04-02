@@ -18,15 +18,13 @@ MEDS python Docs are here
 installing the python library
 #############################
 
-install in the usual place
+    in the usual place
+        python setup.py install
 
-    python setup.py install
+    at a different prefix
+        python setup.py install --prefix=/some/path
 
-at a different prefix
-
-    python setup.py install --prefix=/some/path
-
-make sure it is on your PYTHONPATH
+    make sure it is on your PYTHONPATH
 
 
 C library
@@ -38,11 +36,11 @@ This is a pure C library for working with MEDS.  Docs here
 installing the C library
 #############################
 
-    # in the usual place
-    make install
+    in the usual place
+        make install
 
-    # in a different prefix
-    make install prefix=/some/path
+    in a different prefix
+        make install prefix=/some/path
 
 linking to the library
 #######################
