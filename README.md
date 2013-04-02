@@ -36,6 +36,7 @@ C library
 
 This is a pure C library for working with MEDS.  Docs here
     https://github.com/esheldon/meds/blob/master/src/meds.h
+The only requirement is an installation of cfitsio and gcc.
 
 installing the C library
 #############################
@@ -49,7 +50,7 @@ installing the C library
 linking to the library
 #######################
 
-INclude "meds.h" and use the following to link against the library.  Make sure
+Include "meds.h" and use the following to link against the library.  Make sure
 to get the order correct
 
     CC  ... -lmeds -lcfitsio -lm ...
@@ -62,4 +63,3 @@ You can test your build of the C libary using
     ./src/test $medsfile
 
 Where $medsfile is the name of a MEDS fits file.
-
