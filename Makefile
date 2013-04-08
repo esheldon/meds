@@ -33,6 +33,7 @@ MAKE_INPUT_OBJECTS=$(patsubst %.c,%.o,$(MAKE_INPUT_SOURCES))
 LIB_BASE=libmeds.a
 MI_BASE=make-meds-input
 LIB = $(SRCDIR)/$(LIB_BASE)
+HEADER = $(SRCDIR)/meds.h
 MAKE_INPUT_PROG = $(SRCDIR)/$(MI_BASE)
 
 # just for tests
@@ -54,8 +55,10 @@ $(DEPFILE): $(ALL_SOURCES)
 
 install: $(LIB) $(MAKE_INPUT_PROG)
 	mkdir -p $(prefix)/lib
+	mkdir -p $(prefix)/include
 	mkdir -p $(prefix)/bin
 	cp $(LIB) $(prefix)/lib/
+	cp $(HEADER) $(prefix)/include/
 
 	cp $(MAKE_INPUT_PROG) $(prefix)/bin/$(MI_BASE)
 	chmod a+x $(prefix)/bin/$(MI_BASE)
