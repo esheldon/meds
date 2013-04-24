@@ -190,6 +190,8 @@ struct meds_image_info {
     char* image_path;
     char* sky_path;
     char* seg_path;
+    double magzp;
+    double scale;
 };
 struct meds_info_cat {
     long size;

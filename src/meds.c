@@ -359,11 +359,10 @@ static struct meds_cat *meds_cat_new(long size, long ncutout_max)
         exit(1);
     }
 
-    struct meds_obj *obj=self->data;
     for (long i=0; i<size; i++) {
+        struct meds_obj *obj = &self->data[i];
         alloc_fields(obj, ncutout_max);
         obj->ncutout=ncutout_max;
-        obj++;
     }
 
     return self;
@@ -372,10 +371,9 @@ static struct meds_cat *meds_cat_new(long size, long ncutout_max)
 static struct meds_cat *meds_cat_free(struct meds_cat *self)
 {
     if (self) {
-        struct meds_obj *obj=self->data;
         for (long i=0; i<self->size; i++) {
+            struct meds_obj *obj = &self->data[i];
             free_fields(obj);
-            obj++;
         }
         free(self->data);
         free(self);
@@ -397,10 +395,11 @@ static int load_table(struct meds_cat *self, fitsfile *fits)
     double *dvdrow=alloc_doubles(ndist);
     double *dvdcol=alloc_doubles(ndist);
 
-    struct meds_obj *obj=self->data;
     for (long row=0; row < self->size; row++) {
 
+        struct meds_obj *obj = &self->data[row];
     
+        // these funcs take zero offset row
         if (!fits_load_col_lng(fits, colnums[0], row, 1, &obj->ncutout))
             return 0;
         if (!fits_load_col_lng(fits, colnums[1], row, 1, &obj->box_size))
@@ -444,7 +443,6 @@ static int load_table(struct meds_cat *self, fitsfile *fits)
             obj->distortion[j].dvdrow=dvdrow[j];
             obj->distortion[j].dvdcol=dvdcol[j];
         }
-        obj++;
     }
 
     free(dudrow);
@@ -493,6 +491,8 @@ void meds_image_info_print(const struct meds_image_info *self, FILE* stream)
     fprintf(stream,"image_path: %s\n", self->image_path);
     fprintf(stream,"sky_path:   %s\n", self->sky_path);
     fprintf(stream,"seg_path:   %s\n", self->seg_path);
+    fprintf(stream,"magzp:      %lf\n", self->magzp);
+    fprintf(stream,"scale:      %lf\n", self->scale);
 }
 
 
@@ -515,18 +515,18 @@ static struct meds_info_cat *meds_info_cat_new(long size, long namelen_max)
         exit(1);
     }
 
-    struct meds_image_info *info=self->data;
     for (long i=0; i<size; i++) {
+        struct meds_image_info *info = &self->data[i];
         info->image_path = calloc(namelen_max, sizeof(char));
         info->sky_path = calloc(namelen_max, sizeof(char));
         info->seg_path = calloc(namelen_max, sizeof(char));
 
-        if (!info->image_path || !info->sky_path) {
-            fprintf(stderr,"failed to allocate filename of size %ld\n", namelen_max);
+        if (!info->image_path || !info->sky_path || !info->seg_path) {
+            fprintf(stderr,"failed to allocate filename of size %ld\n",
+                    namelen_max);
             exit(1);
         }
         info->size=namelen_max;
-        info++;
     }
 
     return self;
@@ -535,12 +535,11 @@ static struct meds_info_cat *meds_info_cat_new(long size, long namelen_max)
 static struct meds_info_cat *meds_info_cat_free(struct meds_info_cat *self)
 {
     if (self) {
-        struct meds_image_info *info=self->data;
         for (long i=0; i<self->size; i++) {
+            struct meds_image_info *info = &self->data[i];
             free(info->image_path);
             free(info->sky_path);
             free(info->seg_path);
-            info++;
         }
         free(self->data);
         free(self);
@@ -554,33 +553,48 @@ static int load_image_info(struct meds_info_cat *self, fitsfile *fits)
     int status=0;
     int colnum=1;
     char* nulstr=" ";
+    double dblnul=0;
     LONGLONG firstelem=1;
+    LONGLONG nelem=1;
 
-    struct meds_image_info *info=self->data;
     for (long i=0; i<self->size; i++) {
+
+        struct meds_image_info *info = &self->data[i];
+
         long row = i+1;
 
         colnum=1;
-        if (fits_read_col_str(fits, colnum, row, firstelem, 1,
+        if (fits_read_col_str(fits, colnum, row, firstelem, nelem,
                               nulstr, &info->image_path, NULL, &status)) {
             fits_report_error(stderr,status);
             return 0;
         }
         colnum=2;
-        if (fits_read_col_str(fits, colnum, row, firstelem, 1,
+        if (fits_read_col_str(fits, colnum, row, firstelem, nelem,
                               nulstr, &info->sky_path, NULL, &status)) {
             fits_report_error(stderr,status);
             return 0;
         }
         colnum=3;
-        if (fits_read_col_str(fits, colnum, row, firstelem, 1,
+        if (fits_read_col_str(fits, colnum, row, firstelem, nelem,
                               nulstr, &info->seg_path, NULL, &status)) {
             fits_report_error(stderr,status);
             return 0;
         }
 
+        colnum=4;
+        if (fits_read_col_dbl(fits, colnum, row, firstelem, nelem,
+                              dblnul, &info->magzp, NULL, &status)) {
+            fits_report_error(stderr,status);
+            return 0;
+        }
+        colnum=5;
+        if (fits_read_col_dbl(fits, colnum, row, firstelem, nelem,
+                              dblnul, &info->scale, NULL, &status)) {
+            fits_report_error(stderr,status);
+            return 0;
+        }
 
-        info++;
     }
 
     return 1;
