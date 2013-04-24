@@ -207,6 +207,8 @@ struct meds_meta {
     char *medsconf;
     int min_boxsize;
     int max_boxsize;
+
+    double magzp_ref;
 };
 void meds_meta_print(const struct meds_meta *self, FILE *stream);
 

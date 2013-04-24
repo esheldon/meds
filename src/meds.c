@@ -630,12 +630,13 @@ static struct meds_info_cat *read_image_info(fitsfile *fits)
 // struct meds_meta
 //
 
-static char *fits_read_string_byname(fitsfile *fits, const char* colname, long row)
+static char *fits_read_string_byname(fitsfile *fits, const char* colname,
+                                     long row, int *status)
 {
-    int status=0;
 
     int colnum=get_colnum(fits,colname);
     if (colnum==MEDS_DEFVAL) {
+        (*status)=1;
         return NULL;
     }
 
@@ -645,12 +646,34 @@ static char *fits_read_string_byname(fitsfile *fits, const char* colname, long r
 
     char *data=calloc(len, sizeof(char));
     if (fits_read_col_str(fits, colnum, row, firstelem, 1,
-                nulstr, &data, NULL, &status)) {
-        fits_report_error(stderr,status);
+                nulstr, &data, NULL, status)) {
+        fits_report_error(stderr,(*status));
         return 0;
     }
     return data;
 }
+static double fits_read_double_byname(fitsfile *fits, const char* colname, 
+                                      long row, int *status)
+{
+
+    int colnum=get_colnum(fits,colname);
+    if (colnum==MEDS_DEFVAL) {
+        (*status)=1;
+        return -9999;
+    }
+
+    double nulval=0;
+    LONGLONG firstelem=1;
+
+    double data=-9999;
+    if (fits_read_col_dbl(fits, colnum, row, firstelem, 1,
+                nulval, &data, NULL, status)) {
+        fits_report_error(stderr,(*status));
+        return -9999;
+    }
+    return data;
+}
+
 
 static struct meds_meta *read_meta(fitsfile *fits)
 {
@@ -670,23 +693,34 @@ static struct meds_meta *read_meta(fitsfile *fits)
     long row=1;
     // these will always exist
 
-    self->cat_file = fits_read_string_byname(fits, "cat_file", row);
-    self->coadd_file = fits_read_string_byname(fits, "coadd_file", row);
-    self->coadd_srclist = fits_read_string_byname(fits, "coadd_srclist", row);
-    self->cutout_file = fits_read_string_byname(fits, "cutout_file", row);
+    self->cat_file = 
+        fits_read_string_byname(fits, "cat_file", row,&status);
+    self->coadd_file = 
+        fits_read_string_byname(fits, "coadd_file", row,&status);
+    self->coadd_srclist = 
+        fits_read_string_byname(fits, "coadd_srclist", row, &status);
+    self->cutout_file = 
+        fits_read_string_byname(fits, "cutout_file", row, &status);
 
     // might not be present, if not will be null
-    self->coaddcat_file = fits_read_string_byname(fits, "coaddcat_file", row);
-    self->medsconf = fits_read_string_byname(fits, "medsconf", row);
+    self->coaddcat_file = 
+        fits_read_string_byname(fits, "coaddcat_file", row, &status);
+    self->medsconf = 
+        fits_read_string_byname(fits, "medsconf", row, &status);
 
-    char *minbox_str = fits_read_string_byname(fits, "min_boxsize", row);
-    char *maxbox_str = fits_read_string_byname(fits, "max_boxsize", row);
-    if (minbox_str) {
+    char *minbox_str = 
+        fits_read_string_byname(fits, "min_boxsize", row, &status);
+    if (status==0) {
         self->min_boxsize=atoi(minbox_str);
     }
-    if (maxbox_str) {
+    char *maxbox_str = 
+        fits_read_string_byname(fits, "max_boxsize", row, &status);
+    if (status==0) {
         self->max_boxsize=atoi(maxbox_str);
     }
+
+    self->magzp_ref = 
+        fits_read_double_byname(fits, "magzp_ref", row, &status);
 
     free(minbox_str);
     free(maxbox_str);
@@ -709,6 +743,8 @@ void meds_meta_print(const struct meds_meta *self, FILE *stream)
         fprintf(stderr,"    min_boxsize:   %d\n", self->min_boxsize);
     if (self->max_boxsize > 0)
         fprintf(stderr,"    max_boxsize:   %d\n", self->max_boxsize);
+    if (self->magzp_ref > 0)
+        fprintf(stderr,"    magzp_ref:     %lf\n", self->magzp_ref);
 }
 
 static struct meds_meta *meds_meta_free(struct meds_meta *self)
