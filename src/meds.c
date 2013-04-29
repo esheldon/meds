@@ -1439,3 +1439,70 @@ struct meds_icutout *meds_get_seg_mosaic(const struct meds *self, long iobj)
     return cutout;
 }
 
+
+
+/* 
+   add a ! to front of name so cfitsio will clobber any existing file 
+   you must free the returned string.
+*/
+static char *get_clobber_name(const char *filename)
+{
+    char *oname=NULL;
+    int len=strlen(filename);
+
+    oname = calloc(len+2, sizeof(char));
+    oname[0]='!';
+
+    strncpy(oname+1, filename, len);
+    return oname;
+}
+
+
+void meds_cutout_write_fits(const struct meds_cutout *self,
+                            const char *filename,
+                            int clobber,
+                            int *status)
+{
+    fitsfile* fits=NULL;
+    LONGLONG firstpixel=1;
+    LONGLONG nelements=0;
+
+    int ndims=2;
+    long dims[2]={0};
+
+    char *name=NULL;
+
+    if (clobber) {
+        name=get_clobber_name(filename);
+    } else {
+        name=strdup(filename);
+    }
+
+    if (fits_create_file(&fits, name, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_cutout_write_fits_bail;
+    }
+
+    dims[1] = MOSAIC_NROW(self);
+    dims[0] = MOSAIC_NCOL(self);
+    if (fits_create_img(fits, DOUBLE_IMG, ndims, dims, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_cutout_write_fits_bail;
+    }
+
+    nelements=MOSAIC_SIZE(self);
+    if (fits_write_img(fits, TDOUBLE, firstpixel, nelements, 
+                       self->rows[0], status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_cutout_write_fits_bail;
+    }
+
+    if (fits_close_file(fits, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_cutout_write_fits_bail;
+    }
+
+_meds_cutout_write_fits_bail:
+    free(name);
+}
+

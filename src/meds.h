@@ -413,4 +413,9 @@ struct meds_icutout *meds_get_seg_mosaic(const struct meds *self,
 struct meds_cutout *meds_cutout_free(struct meds_cutout *self);
 struct meds_icutout *meds_icutout_free(struct meds_icutout *self);
 
+void meds_cutout_write_fits(const struct meds_cutout *self,
+                            const char *filename,
+                            int clobber,
+                            int *status);
+
 #endif
