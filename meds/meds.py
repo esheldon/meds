@@ -60,7 +60,7 @@ class MEDS(object):
         Get all the metadata
     get_jacobian(self, iobj, icutout)
         Get the jacobian as a dict
-    def get_jacobian_list(self, iobj)
+    get_jacobian_list(self, iobj)
         Get the list of jacobians for all cutouts for this object.
 
 
