@@ -58,6 +58,12 @@ class MEDS(object):
         Get the entire image info structure
     get_meta()
         Get all the metadata
+    get_jacobian(self, iobj, icutout)
+        Get the jacobian as a dict
+    def get_jacobian_list(self, iobj)
+        Get the list of jacobians for all cutouts for this object.
+
+
 
     examples
     --------
@@ -298,6 +304,46 @@ class MEDS(object):
         Get all the metadata
         """
         return self._meta
+
+    def get_jacobian(self, iobj, icutout):
+        """
+        Get the jacobian as a dict keyed by
+
+            dudrow
+            dudcol
+            dvdcol
+            dvdrow
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        icutout:
+            Index of the cutout for this object.
+        """
+        self._check_indices(iobj,icutout=icutout)
+        return {'dudrow':self['dudrow'][iobj,icutout],
+                'dudcol':self['dudcol'][iobj,icutout],
+                'dvdcol':self['dvdcol'][iobj,icutout],
+                'dvdrow':self['dvdrow'][iobj,icutout]}
+
+    def get_jacobian_list(self, iobj):
+        """
+        Get the list of jacobians for all cutouts
+        for this object.
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        """
+        self._check_indices(iobj)
+        jlist=[]
+        for icutout in xrange(self['ncutout'][iobj]):
+            j=self.get_jacobian(iobj, icutout)
+            jlist.append(j)
+
+        return jlist
 
     def _get_extension_name(self, type):
         if type=='image':
