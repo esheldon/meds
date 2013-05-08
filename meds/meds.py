@@ -68,11 +68,14 @@ class MEDS(object):
         Get the entire image info structure
     get_meta()
         Get all the metadata
-    get_jacobian(self, iobj, icutout)
+    get_jacobian(iobj, icutout)
         Get the jacobian as a dict
-    get_jacobian_list(self, iobj)
+    get_jacobian_matrix(iobj, icutout)
+        Get the jacobian as a numpy matrix
+    get_jacobian_list(iobj)
         Get the list of jacobians for all cutouts for this object.
 
+ 
 
 
     examples
@@ -326,33 +329,6 @@ class MEDS(object):
         wlist = self._split_mosaic(wtmosaic, box_size, ncutout)
         return wlist
 
-    def get_jacob_as_matrix(self, iobj, icutout):
-        """
-        Get the jacobian as a numpy matrix
-
-        parameters
-        ----------
-        iobj:
-            Index of the object
-        type: string, optional
-            Cutout type. Default is 'image'.  Allowed
-            values are 'image','weight'
-
-        returns
-        -------
-        A 2x2 matrix of the jacobian
-            dudrow dudcol
-            dvdrow dvdcol
-        """
-        jacob=numpy.matrix( numpy.zeros( (2,2) ), copy=False)
-
-        jacob[0,0] = self['dudrow'][iobj,icutout]
-        jacob[0,1] = self['dudcol'][iobj,icutout]
-        jacob[1,0] = self['dvdrow'][iobj,icutout]
-        jacob[1,1] = self['dvdcol'][iobj,icutout]
-
-        return jacob
-
 
     def get_source_info(self, iobj, icutout):
         """
@@ -448,6 +424,34 @@ class MEDS(object):
                 'dvdcol':self['dvdcol'][iobj,icutout],
                 'dvdrow':self['dvdrow'][iobj,icutout]}
 
+    def get_jacobian_matrix(self, iobj, icutout):
+        """
+        Get the jacobian as a numpy matrix
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        type: string, optional
+            Cutout type. Default is 'image'.  Allowed
+            values are 'image','weight'
+
+        returns
+        -------
+        A 2x2 matrix of the jacobian
+            dudrow dudcol
+            dvdrow dvdcol
+        """
+        jacob=numpy.matrix( numpy.zeros( (2,2) ), copy=False)
+
+        jacob[0,0] = self['dudrow'][iobj,icutout]
+        jacob[0,1] = self['dudcol'][iobj,icutout]
+        jacob[1,0] = self['dvdrow'][iobj,icutout]
+        jacob[1,1] = self['dvdcol'][iobj,icutout]
+
+        return jacob
+
+
     def get_jacobian_list(self, iobj):
         """
         Get the list of jacobians for all cutouts
@@ -494,8 +498,8 @@ class MEDS(object):
             rows = rows-rowcen
             cols = cols-colcen
 
-            se_jacob=self.get_jacob_as_matrix(iobj, icutout)
-            coadd_jacob=self.get_jacob_as_matrix(iobj, 0)
+            se_jacob=self.get_jacobian_matrix(iobj, icutout)
+            coadd_jacob=self.get_jacobian_matrix(iobj, 0)
 
             try:
                 cjinv = coadd_jacob.getI()
