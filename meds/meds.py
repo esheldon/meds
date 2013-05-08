@@ -50,10 +50,10 @@ class MEDS(object):
         Get an image list with all cutouts associated with this coadd object
     get_cweight_cutout(iobj, icutout)
         Composite the weight and seg maps, interpolating seg map from the coadd
-    get_cweight_mosaic
+    get_cweight_mosaic(iobj)
         Composite the weight and seg maps, interpolating seg map from the coadd
         get all maps in a mosaic
-    get_cweight_cutout_list
+    get_cweight_cutout_list(iobj)
         Composite the weight and seg maps, interpolating seg map from the coadd
         get all maps in a list
     get_source_path(iobj, icutout)
