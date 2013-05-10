@@ -86,6 +86,8 @@ class MEDS(object):
     get_jacobian_list(iobj)
         Get the list of jacobians for all cutouts for this object.
 
+    split_mosaic(mosaic)
+        Split the mosaic into a list of images.
  
 
 
@@ -255,7 +257,7 @@ class MEDS(object):
         mosaic=self.get_mosaic(iobj,type=type)
         ncutout=self._cat['ncutout'][iobj]
         box_size=self._cat['box_size'][iobj]
-        return self._split_mosaic(mosaic, box_size, ncutout)
+        return self.split_mosaic(mosaic)
 
     def get_cweight_cutout(self, iobj, icutout):
         """
@@ -307,7 +309,7 @@ class MEDS(object):
         box_size=self._cat['box_size'][iobj]
 
         # shares underlying storage
-        wlist = self._split_mosaic(wtmosaic, box_size, ncutout)
+        wlist = self.split_mosaic(wtmosaic)
 
         for icutout,wt in enumerate(wlist):
             cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg)
@@ -339,7 +341,7 @@ class MEDS(object):
         box_size=self._cat['box_size'][iobj]
 
         # shares underlying storage
-        wlist = self._split_mosaic(wtmosaic, box_size, ncutout)
+        wlist = self.split_mosaic(wtmosaic)
         return wlist
 
 
@@ -395,7 +397,7 @@ class MEDS(object):
         box_size=self._cat['box_size'][iobj]
 
         # shares underlying storage
-        wlist = self._split_mosaic(segmosaic, box_size, ncutout)
+        wlist = self.split_mosaic(segmosaic)
 
         for icutout,seg in enumerate(wlist):
             cseg=self._make_composite_image(iobj, icutout, seg, coadd_seg)
@@ -426,7 +428,7 @@ class MEDS(object):
         box_size=self._cat['box_size'][iobj]
 
         # shares underlying storage
-        seglist = self._split_mosaic(segmosaic, box_size, ncutout)
+        seglist = self.split_mosaic(segmosaic)
         return seglist
 
 
@@ -655,7 +657,15 @@ class MEDS(object):
         else:
             raise ValueError("bad cutout type '%s'" % type)
 
-    def _split_mosaic(self, mosaic, box_size, ncutout):
+    def split_mosaic(self, mosaic):
+        """
+        Split the mosaic into a list of images.
+
+        The images in the list share memory with the original.
+        """
+        box_size=mosaic.shape[1]
+        ncutout = mosaic.shape[0]/box_size
+
         imlist=[]
         for i in xrange(ncutout):
             r1=i*box_size
