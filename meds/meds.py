@@ -48,6 +48,7 @@ class MEDS(object):
         Get a mosaic of all cutouts associated with this coadd object
     get_cutout_list(iobj)
         Get an image list with all cutouts associated with this coadd object
+
     get_cweight_cutout(iobj, icutout)
         Composite the weight and seg maps, interpolating seg map from the coadd
     get_cweight_mosaic(iobj)
@@ -56,6 +57,16 @@ class MEDS(object):
     get_cweight_cutout_list(iobj)
         Composite the weight and seg maps, interpolating seg map from the coadd
         get all maps in a list
+
+    get_cseg_cutout(iobj, icutout)
+        Interpolate the coadd seg onto the plane of the cutout.
+    get_cseg_mosaic(self, iobj)
+        Interpolate the coadd seg onto the planes of the cutouts. Get
+        a big mosaic of all.
+    get_cseg_cutout_list(self, iobj)
+        Interpolate the coadd seg onto the planes of the cutouts.
+        Get a list of all seg cutouts.
+
     get_source_path(iobj, icutout)
         Get the source filename associated with the indicated cutout
     get_sky_path(iobj, icutout)
@@ -256,6 +267,8 @@ class MEDS(object):
         ----------
         iobj:
             Index of the object
+        icutout:
+            Inde xof cutout
         type: string, optional
             Cutout type. Default is 'image'.  Allowed
             values are 'image','weight'
@@ -266,7 +279,7 @@ class MEDS(object):
         """
         wt=self.get_cutout(iobj, icutout, type='weight')
         coadd_seg=self.get_cutout(iobj, 0, type='seg')
-        cwt=self._make_composite_weight(iobj, icutout, wt, coadd_seg)
+        cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg)
         return cwt
 
     def get_cweight_mosaic(self, iobj):
@@ -297,7 +310,7 @@ class MEDS(object):
         wlist = self._split_mosaic(wtmosaic, box_size, ncutout)
 
         for icutout,wt in enumerate(wlist):
-            cwt=self._make_composite_weight(iobj, icutout, wt, coadd_seg)
+            cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg)
             wt[:,:] = cwt[:,:]
 
         return wtmosaic
@@ -328,6 +341,94 @@ class MEDS(object):
         # shares underlying storage
         wlist = self._split_mosaic(wtmosaic, box_size, ncutout)
         return wlist
+
+
+    def get_cseg_cutout(self, iobj, icutout):
+        """
+        Interpolate the coadd seg onto the plane of the cutout.
+
+        The seg is set to zero outside the region as defined in the coadd,
+        and to the "number" field from sextractor inside the region.
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        icutout:
+            Inde xof cutout
+
+        returns
+        -------
+        The seg map
+        """
+        seg=self.get_cutout(iobj, icutout, type='seg')
+        seg[:,:] = self.get_number(iobj)
+
+        coadd_seg=self.get_cutout(iobj, 0, type='seg')
+        cseg=self._make_composite_image(iobj, icutout, seg, coadd_seg)
+        return cseg
+
+
+    def get_cseg_mosaic(self, iobj):
+        """
+        Interpolate the coadd seg onto the planes of the cutouts. Get
+        a big mosaic of all.
+
+        The seg is set to zero outside the region as defined in the coadd,
+        and to the "number" field from sextractor inside the region.
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+
+        returns
+        -------
+        A mosaic of all seg maps
+        """
+        segmosaic=self.get_mosaic(iobj, type='seg')
+        segmosaic[:,:] = self.get_number(iobj)
+
+        coadd_seg=self.get_cutout(iobj, 0, type='seg')
+
+        ncutout=self._cat['ncutout'][iobj]
+        box_size=self._cat['box_size'][iobj]
+
+        # shares underlying storage
+        wlist = self._split_mosaic(segmosaic, box_size, ncutout)
+
+        for icutout,seg in enumerate(wlist):
+            cseg=self._make_composite_image(iobj, icutout, seg, coadd_seg)
+            seg[:,:] = cseg[:,:]
+
+        return segmosaic
+
+    def get_cseg_cutout_list(self, iobj):
+        """
+        Interpolate the coadd seg onto the planes of the cutouts.
+        Get a list of all seg cutouts.
+
+        The seg is set to zero outside the region as defined in the coadd,
+        and to the "number" field from sextractor inside the region.
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+
+        returns
+        -------
+        A list containing all seg maps
+        """
+        segmosaic=self.get_cseg_mosaic(iobj)
+
+        ncutout=self._cat['ncutout'][iobj]
+        box_size=self._cat['box_size'][iobj]
+
+        # shares underlying storage
+        seglist = self._split_mosaic(segmosaic, box_size, ncutout)
+        return seglist
+
 
 
     def get_source_info(self, iobj, icutout):
@@ -470,19 +571,29 @@ class MEDS(object):
 
         return jlist
 
-
-    def _make_composite_weight(self, iobj, icutout, wt, coadd_seg):
+    def get_number(self, iobj):
         """
-        Internal routine to composite the coadd seg onto the weight map
+        Old versions of the meds files did not have number
+        from the sextractor catalog
+        """
+        if 'number' not in self._cat.dtype.names:
+            return iobj+1
+        else:
+            return self._cat['number'][iobj]
+
+    def _make_composite_image(self, iobj, icutout, im, coadd_seg):
+        """
+        Internal routine to composite the coadd seg onto another image,
+        meaning set zero outside the region
 
         for the coadd this is easy, but for SE cutouts we need to use the
         jacobian to transform between SE and coadd coordinate systems
         """
         
-        cwt=wt.copy()
+        cim=im.copy()
 
-        coadd_rowcen=self['cutout_row'][iobj,icutout]
-        coadd_colcen=self['cutout_col'][iobj,icutout]
+        coadd_rowcen=self['cutout_row'][iobj,0]
+        coadd_colcen=self['cutout_col'][iobj,0]
         rowcen=self['cutout_row'][iobj,icutout]
         colcen=self['cutout_col'][iobj,icutout]
 
@@ -492,9 +603,9 @@ class MEDS(object):
             # this cutout is the coadd
             w=numpy.where(coadd_seg != segid)
             if w[0].size != 0:
-                cwt[w] = 0.0
+                cim[w] = 0.0
         else:
-            rows,cols=numpy.mgrid[0:cwt.shape[0], 0:cwt.shape[1]]
+            rows,cols=numpy.mgrid[0:cim.shape[0], 0:cim.shape[1]]
             rows = rows-rowcen
             cols = cols-colcen
 
@@ -504,9 +615,9 @@ class MEDS(object):
             try:
                 cjinv = coadd_jacob.getI()
             except numpy.linalg.linalg.LinAlgError:
-                print 'coadd jacob is singular, setting weight to zero'
-                cwt[:,:] = 0.0
-                return cwt
+                print 'coadd jacobian is singular, setting weight to zero'
+                cim[:,:] = 0.0
+                return cim
 
             # convert pixel coords in SE cutout to u,v
             u = rows*se_jacob[0,0] + cols*se_jacob[0,1]
@@ -522,16 +633,16 @@ class MEDS(object):
             wbad=numpy.where(   (crow < 0) | (crow >= coadd_seg.shape[0])
                               & (ccol < 0) | (ccol >= coadd_seg.shape[1]) )
             if wbad[0].size != 0:
-                cwt[wbad] = 0.0
+                cim[wbad] = 0
 
             # clipping makes the notation easier
             crow = crow.clip(0,coadd_seg.shape[0]-1)
             ccol = ccol.clip(0,coadd_seg.shape[1]-1)
             wbad=numpy.where( coadd_seg[crow,ccol] != segid )
             if wbad[0].size != 0:
-                cwt[wbad] = 0.0
+                cim[wbad] = 0
 
-        return cwt
+        return cim
 
 
     def _get_extension_name(self, type):
