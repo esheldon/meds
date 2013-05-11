@@ -511,6 +511,8 @@ class MEDS(object):
         """
         Get the jacobian as a dict keyed by
 
+            row0
+            col0
             dudrow
             dudcol
             dvdcol
@@ -524,10 +526,20 @@ class MEDS(object):
             Index of the cutout for this object.
         """
         self._check_indices(iobj,icutout=icutout)
-        return {'dudrow':self['dudrow'][iobj,icutout],
-                'dudcol':self['dudcol'][iobj,icutout],
-                'dvdcol':self['dvdcol'][iobj,icutout],
-                'dvdrow':self['dvdrow'][iobj,icutout]}
+
+        row0 = self.meds['cutout_row'][index,icutout]
+        col0 = self.meds['cutout_col'][index,icutout]
+        dudrow=self['dudrow'][iobj,icutout]
+        dudcol=self['dudcol'][iobj,icutout]
+        dvdcol=self['dvdcol'][iobj,icutout]
+        dvdrow=self['dvdrow'][iobj,icutout]
+
+        return {'row0':row0,
+                'col0':col0,
+                'dudrow':dudrow,
+                'dudcol':dudcol,
+                'dvdcol':dvdcol,
+                'dvdrow':dvdrow}
 
     def get_jacobian_matrix(self, iobj, icutout):
         """
