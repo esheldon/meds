@@ -527,8 +527,8 @@ class MEDS(object):
         """
         self._check_indices(iobj,icutout=icutout)
 
-        row0 = self.meds['cutout_row'][index,icutout]
-        col0 = self.meds['cutout_col'][index,icutout]
+        row0 = self['cutout_row'][iobj,icutout]
+        col0 = self['cutout_col'][iobj,icutout]
         dudrow=self['dudrow'][iobj,icutout]
         dudcol=self['dudcol'][iobj,icutout]
         dvdcol=self['dvdcol'][iobj,icutout]
