@@ -617,7 +617,7 @@ class MEDS(object):
 
         if icutout==0:
             # this cutout is the coadd
-            w=numpy.where(coadd_seg != segid)
+            w=numpy.where( (coadd_seg != segid) & (coadd_seg != 0) )
             if w[0].size != 0:
                 cim[w] = 0.0
         else:
@@ -654,7 +654,7 @@ class MEDS(object):
             # clipping makes the notation easier
             crow = crow.clip(0,coadd_seg.shape[0]-1)
             ccol = ccol.clip(0,coadd_seg.shape[1]-1)
-            wbad=numpy.where( coadd_seg[crow,ccol] != segid )
+            wbad=numpy.where( (coadd_seg[crow,ccol] != segid ) & (coadd_seg[crow,ccol] != 0) )
             if wbad[0].size != 0:
                 cim[wbad] = 0
 
