@@ -207,10 +207,24 @@ struct meds_meta {
     // optional
     char *coaddcat_file;
     char *medsconf;
-    int min_boxsize;
-    int max_boxsize;
+    long min_boxsize;
+    long max_boxsize;
 
     double magzp_ref;
+
+    // new required ones
+    char *desdata;
+    long se_hdu;
+    long se_wt_hdu;
+    long se_badpix_hdu;
+    long sky_hdu;
+    long seg_hdu;
+    long coadd_hdu;
+    long coadd_wt_hdu;
+    long coadd_seg_hdu;
+    long fake_coadd_seg;
+
+
 };
 void meds_meta_print(const struct meds_meta *self, FILE *stream);
 

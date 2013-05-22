@@ -687,6 +687,29 @@ static double fits_read_double_byname(fitsfile *fits, const char* colname,
     }
     return data;
 }
+static long fits_read_long_byname(fitsfile *fits, const char* colname, 
+                                long row, int *status)
+{
+
+    int colnum=get_colnum(fits,colname);
+    if (colnum==MEDS_DEFVAL) {
+        (*status)=1;
+        return -9999;
+    }
+
+    long nulval=0;
+    LONGLONG firstelem=1;
+
+    long data=-9999;
+    if (fits_read_col_lng(fits, colnum, row, firstelem, 1,
+                nulval, &data, NULL, status)) {
+        fits_report_error(stderr,(*status));
+        return -9999;
+    }
+    return data;
+}
+
+
 
 
 static struct meds_meta *read_meta(fitsfile *fits)
@@ -705,8 +728,8 @@ static struct meds_meta *read_meta(fitsfile *fits)
     self->max_boxsize=MEDS_DEFVAL;
 
     long row=1;
-    // these will always exist
 
+    // these will always exist
     self->cat_file = 
         fits_read_string_byname(fits, "cat_file", row,&status);
     self->coadd_file = 
@@ -715,6 +738,25 @@ static struct meds_meta *read_meta(fitsfile *fits)
         fits_read_string_byname(fits, "coadd_srclist", row, &status);
     self->cutout_file = 
         fits_read_string_byname(fits, "cutout_file", row, &status);
+
+    // new required ones
+    self->magzp_ref = 
+        fits_read_double_byname(fits, "magzp_ref", row, &status);
+
+    self->desdata=fits_read_string_byname(fits,"DESDATA",row, &status);
+
+    self->se_hdu=fits_read_long_byname(fits,"se_hdu",row, &status);
+    self->se_wt_hdu=fits_read_long_byname(fits,"se_wt_hdu",row, &status);
+    self->se_badpix_hdu=fits_read_long_byname(fits,"se_badpix_hdu",row, &status);
+
+    self->sky_hdu=fits_read_long_byname(fits,"sky_hdu",row, &status);
+    self->seg_hdu=fits_read_long_byname(fits,"seg_hdu",row, &status);
+
+    self->coadd_hdu=fits_read_long_byname(fits,"coadd_hdu",row, &status);
+    self->coadd_wt_hdu=fits_read_long_byname(fits,"coadd_wt_hdu",row, &status);
+    self->coadd_seg_hdu=fits_read_long_byname(fits,"coadd_seg_hdu",row, &status);
+
+    self->fake_coadd_seg=fits_read_long_byname(fits,"fake_coadd_seg",row, &status);
 
     // might not be present, if not will be null
     self->coaddcat_file = 
@@ -725,16 +767,14 @@ static struct meds_meta *read_meta(fitsfile *fits)
     char *minbox_str = 
         fits_read_string_byname(fits, "min_boxsize", row, &status);
     if (status==0) {
-        self->min_boxsize=atoi(minbox_str);
+        self->min_boxsize=atol(minbox_str);
     }
     char *maxbox_str = 
         fits_read_string_byname(fits, "max_boxsize", row, &status);
     if (status==0) {
-        self->max_boxsize=atoi(maxbox_str);
+        self->max_boxsize=atol(maxbox_str);
     }
 
-    self->magzp_ref = 
-        fits_read_double_byname(fits, "magzp_ref", row, &status);
 
     free(minbox_str);
     free(maxbox_str);
@@ -751,14 +791,39 @@ void meds_meta_print(const struct meds_meta *self, FILE *stream)
 
     if (self->coaddcat_file)
         fprintf(stderr,"    coaddcat_file: %s\n", self->coaddcat_file);
+
+    fprintf(stderr,"    desdata:       %s\n", self->desdata);
+
     if (self->medsconf)
         fprintf(stderr,"    medsconf:      %s\n", self->medsconf);
     if (self->min_boxsize > 0)
-        fprintf(stderr,"    min_boxsize:   %d\n", self->min_boxsize);
+        fprintf(stderr,"    min_boxsize:   %ld\n", self->min_boxsize);
     if (self->max_boxsize > 0)
-        fprintf(stderr,"    max_boxsize:   %d\n", self->max_boxsize);
+        fprintf(stderr,"    max_boxsize:   %ld\n", self->max_boxsize);
     if (self->magzp_ref > 0)
         fprintf(stderr,"    magzp_ref:     %lf\n", self->magzp_ref);
+    if (self->se_hdu > 0)
+        fprintf(stderr,"    se_hdu:        %ld\n", self->se_hdu);
+    if (self->se_wt_hdu > 0)
+        fprintf(stderr,"    se_wt_hdu:     %ld\n", self->se_wt_hdu);
+    if (self->se_badpix_hdu > 0)
+        fprintf(stderr,"    se_badpix_hdu: %ld\n", self->se_badpix_hdu);
+    if (self->sky_hdu > 0)
+        fprintf(stderr,"    sky_hdu:       %ld\n", self->sky_hdu);
+    if (self->seg_hdu > 0)
+        fprintf(stderr,"    seg_hdu:       %ld\n", self->seg_hdu);
+
+    if (self->coadd_hdu > 0)
+        fprintf(stderr,"    coadd_hdu:     %ld\n", self->coadd_hdu);
+    if (self->coadd_wt_hdu > 0)
+        fprintf(stderr,"    coadd_wt_hdu:  %ld\n", self->coadd_wt_hdu);
+    if (self->coadd_seg_hdu > 0)
+        fprintf(stderr,"    coadd_seg_hdu: %ld\n", self->coadd_seg_hdu);
+
+    if (self->fake_coadd_seg > 0)
+        fprintf(stderr,"    fake_coadd_seg: %ld\n", self->fake_coadd_seg);
+
+
 }
 
 static struct meds_meta *meds_meta_free(struct meds_meta *self)
