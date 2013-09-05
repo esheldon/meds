@@ -531,15 +531,15 @@ class MEDS(object):
         col0 = self['cutout_col'][iobj,icutout]
         dudrow=self['dudrow'][iobj,icutout]
         dudcol=self['dudcol'][iobj,icutout]
-        dvdcol=self['dvdcol'][iobj,icutout]
         dvdrow=self['dvdrow'][iobj,icutout]
+        dvdcol=self['dvdcol'][iobj,icutout]
 
         return {'row0':row0,
                 'col0':col0,
                 'dudrow':dudrow,
                 'dudcol':dudcol,
-                'dvdcol':dvdcol,
-                'dvdrow':dvdrow}
+                'dvdrow':dvdrow,
+                'dvdcol':dvdcol}
 
     def get_jacobian_matrix(self, iobj, icutout):
         """

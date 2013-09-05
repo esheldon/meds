@@ -56,7 +56,9 @@ struct colnums {
     int colmin;
     int colmax;
     int flux_radius;
-    int ellipticity;
+    //int ellipticity;
+    int a_world;
+    int b_world;
 };
 
 struct cat {
@@ -115,7 +117,9 @@ void get_colnums(fitsfile *fits, struct colnums *colnums)
     colnums->colmax=get_colnum(fits, "XMAX_IMAGE");
 
     colnums->flux_radius=get_colnum(fits, "FLUX_RADIUS");
-    colnums->ellipticity=get_colnum(fits, "ELLIPTICITY");
+    //colnums->ellipticity=get_colnum(fits, "ELLIPTICITY");
+    colnums->a_world=get_colnum(fits, "A_WORLD");
+    colnums->b_world=get_colnum(fits, "B_WORLD");
 }
 
 
@@ -206,7 +210,11 @@ void load_rows(fitsfile *fits, struct cat *cat)
         obj->colmax=fits_load_col_int(fits, colnums.colmax, row);
 
         obj->flux_radius=fits_load_col_dbl(fits, colnums.flux_radius, row);
-        obj->ellipticity=fits_load_col_dbl(fits, colnums.ellipticity, row);
+
+        double a_world=fits_load_col_dbl(fits, colnums.a_world, row);
+        double b_world=fits_load_col_dbl(fits, colnums.b_world, row);
+
+        obj->ellipticity=1.0 - b_world/a_world;
 
         obj++;
     }
