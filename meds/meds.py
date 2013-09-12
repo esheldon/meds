@@ -141,16 +141,16 @@ class MEDS(object):
     Fields in main catalog
     -----------------------
 
-     id                 i4       id from coadd catalog
-     ncutout            i4       number of cutouts for this object
-     box_size           i4       box size for each cutout
-     file_id            i4[NMAX] zero-offset id into the file names in the 
+     id                 i8       id from coadd catalog
+     ncutout            i8       number of cutouts for this object
+     box_size           i8       box size for each cutout
+     file_id            i8[NMAX] zero-offset id into the file names in the 
                                  second extension
-     start_row          i4[NMAX] zero-offset, points to start of each cutout.
+     start_row          i8[NMAX] zero-offset, points to start of each cutout.
      orig_row           f8[NMAX] zero-offset position in original image
      orig_col           f8[NMAX] zero-offset position in original image
-     orig_start_row     i4[NMAX] zero-offset start corner in original image
-     orig_start_col     i4[NMAX] zero-offset start corner in original image
+     orig_start_row     i8[NMAX] zero-offset start corner in original image
+     orig_start_col     i8[NMAX] zero-offset start corner in original image
      cutout_row         f8[NMAX] zero-offset position in cutout imag
      cutout_col         f8[NMAX] zero-offset position in cutout image
      dudrow             f8[NMAX] jacobian of transformation 
