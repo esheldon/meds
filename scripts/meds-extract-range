@@ -8,3 +8,87 @@ Description
     Extract a range of objects from a MEDS file and write a new file.
 """
 
+import sys
+from optparse import OptionParser
+import fitsio
+
+parser=OptionParser(__doc__)
+
+def get_row_range(data):
+    """
+    get pixel range for this subset
+    """
+    cstart   = data['start_row'][0,0]
+
+    ncutout  = data['ncutout'][-1]
+    npix     = data['box_size'][-1]**2 * ncutout
+    cend     = data['start_row'][-1,ncutout-1] + npix
+
+    return cstart, cend
+
+def extract(meds_file, start, end, out_file):
+    
+    with fitsio.FITS(meds_file) as infits:
+        with fitsio.FITS(out_file,'rw',clobber=True) as outfits:
+
+            #
+            # subset of object data table
+            #
+            obj_data = infits['object_data'][start:end+1]
+
+            cstart, cend = get_row_range(obj_data)
+
+            # adjust to new start
+            obj_data['start_row'] -= cstart
+
+            outfits.write(obj_data, extname='object_data')
+
+            #
+            # copy all metadata and image info
+            #
+            iinfo=infits['image_info'][:]
+            outfits.write(iinfo, extname='image_info')
+
+            meta=infits['metadata'][:]
+            outfits.write(meta, extname='metadata')
+
+            #
+            # extract cutouts for the requested objects
+            #
+            image_cutouts=infits['image_cutouts'][cstart:cend]
+            outfits.write(image_cutouts, extname='image_cutouts')
+            del image_cutouts
+
+            weight_cutouts=infits['weight_cutouts'][cstart:cend]
+            outfits.write(weight_cutouts, extname='weight_cutouts')
+            del weight_cutouts
+
+            seg_cutouts=infits['seg_cutouts'][cstart:cend]
+            outfits.write(seg_cutouts, extname='seg_cutouts')
+            del seg_cutouts
+
+
+
+def check_inputs(meds_file, start, end, out_file):
+    if meds_file==out_file:
+        raise ValueError("output file name equals input")
+
+    if start > end:
+        raise ValueError("found start > end: %d %d" % (start,end) )
+
+def main():
+    options, args = parser.parse_args(sys.argv[1:])
+
+    if len(args) < 4:
+        parser.print_help()
+        sys.exit(1)
+
+    meds_file=args[0]
+    start=int(args[1])
+    end=int(args[2])
+    out_file=args[3]
+
+    check_inputs(meds_file, start, end, out_file)
+    extract(meds_file, start, end, out_file)
+ 
+main()
