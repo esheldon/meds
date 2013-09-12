@@ -1,0 +1,10 @@
+#!/usr/bin/env python
+"""
+    %prog [options] meds_file start end output_file
+
+
+Description
+
+    Extract a range of objects from a MEDS file and write a new file.
+"""
+
