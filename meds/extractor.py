@@ -1,5 +1,15 @@
+"""
+MEDSExtractor
+    A class to extract a subset of the objects in a MEDS file
+    and write to a new file
+
+MEDSCatalogExtractor
+    A class to extract the catalog and metadata from a MEDS
+    and write to a new file.
+"""
 import os
 import fitsio
+import numpy
 
 def extract_range(meds_file, start, end, sub_file):
     """
@@ -11,6 +21,18 @@ def extract_range(meds_file, start, end, sub_file):
     """
 
     extractor=MEDSExtractor(meds_file, start, end, sub_file)
+
+def extract_catalog(meds_file, sub_file):
+    """
+    Extract the catalog and meta data from a MEDS file and write
+    to a new file
+
+    If you want this as a temporary file, which will be cleaned when you are
+    done with it, use a MEDSCatalogExtractor object with cleanup=True
+    """
+
+    extractor=MEDSCatalogExtractor(meds_file, sub_file)
+
 
 class MEDSExtractor(object):
     """
@@ -55,9 +77,9 @@ class MEDSExtractor(object):
                 obj_data = infits['object_data'][self.start:self.end+1]
 
                 cstart, cend = self._get_row_range(obj_data)
-
-                # adjust to new start
-                obj_data['start_row'] -= cstart
+                if cstart != -1:
+                    # adjust to new start.  If cstart==-1 will all be -9999
+                    obj_data['start_row'] -= cstart
 
                 outfits.write(obj_data, extname='object_data')
 
@@ -73,27 +95,55 @@ class MEDSExtractor(object):
                 #
                 # extract cutouts for the requested objects
                 #
-                image_cutouts=infits['image_cutouts'][cstart:cend]
-                outfits.write(image_cutouts, extname='image_cutouts')
-                del image_cutouts
+                if cstart == -1:
+                    self._write_dummy(outfits)
+                else:
+                    image_cutouts=infits['image_cutouts'][cstart:cend]
+                    outfits.write(image_cutouts, extname='image_cutouts')
+                    del image_cutouts
 
-                weight_cutouts=infits['weight_cutouts'][cstart:cend]
-                outfits.write(weight_cutouts, extname='weight_cutouts')
-                del weight_cutouts
+                    weight_cutouts=infits['weight_cutouts'][cstart:cend]
+                    outfits.write(weight_cutouts, extname='weight_cutouts')
+                    del weight_cutouts
 
-                seg_cutouts=infits['seg_cutouts'][cstart:cend]
-                outfits.write(seg_cutouts, extname='seg_cutouts')
-                del seg_cutouts
+                    seg_cutouts=infits['seg_cutouts'][cstart:cend]
+                    outfits.write(seg_cutouts, extname='seg_cutouts')
+                    del seg_cutouts
+
+    def _write_dummy(self, outfits):
+        print 'no objects with cutouts, writing dummy data'
+        dummy=numpy.zeros(2, dtype='f4') + -9999
+        outfits.write(dummy, extname='image_cutouts')
+        dummy=numpy.zeros(2, dtype='f4')
+        outfits.write(dummy, extname='weight_cutouts')
+        dummy=numpy.zeros(2, dtype='i4') + -9999
+        outfits.write(dummy, extname='seg_cutouts')
 
     def _get_row_range(self, data):
         """
         get pixel range for this subset
+        """
+        w,=numpy.where( data['ncutout'] > 0)
+        if w.size==0:
+            return -1, -1
+
+
+        ifirst = w[0]
+        ilast  = w[-1]
+
+        cstart    = data['start_row'][ifirst,0]
+
+        ncutout_last = data['ncutout'][ilast]
+        npix_last = data['box_size'][ilast]**2 * ncutout_last
+        cend     = data['start_row'][ilast,ncutout_last-1] + npix_last
+
         """
         cstart   = data['start_row'][0,0]
 
         ncutout  = data['ncutout'][-1]
         npix     = data['box_size'][-1]**2 * ncutout
         cend     = data['start_row'][-1,ncutout-1] + npix
+        """
 
         return cstart, cend
 
@@ -105,4 +155,58 @@ class MEDSExtractor(object):
 
         if self.start > self.end:
             raise ValueError("found start > end: %d %d" % (start,end) )
+
+
+class MEDSCatalogExtractor(object):
+    """
+    Class to extract the catalog and meta data and write a new file
+    """
+    def __init__(self, meds_file, new_file, cleanup=False):
+        self.meds_file=meds_file
+        self.new_file=new_file
+        self.cleanup=cleanup
+
+        self._check_inputs()
+        self._extract()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.close()
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if self.cleanup:
+            if os.path.exists(self.new_file):
+                print 'removing cat only file:',self.new_file
+                os.remove(self.new_file)
+
+    def _extract(self):
+        
+        with fitsio.FITS(self.meds_file) as infits:
+            print 'opening cat only file:',self.new_file
+            with fitsio.FITS(self.new_file,'rw',clobber=True) as outfits:
+
+                #
+                # object data table
+                #
+                obj_data = infits['object_data'][:]
+
+                outfits.write(obj_data, extname='object_data')
+
+                #
+                # copy all metadata and image info
+                #
+                iinfo=infits['image_info'][:]
+                outfits.write(iinfo, extname='image_info')
+
+                meta=infits['metadata'][:]
+                outfits.write(meta, extname='metadata')
+
+    def _check_inputs(self):
+        if self.meds_file==self.new_file:
+            raise ValueError("output file name equals input")
 

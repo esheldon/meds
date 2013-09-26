@@ -2,7 +2,7 @@ import os
 import glob
 from distutils.core import setup
 
-scripts=['meds-extract-range']
+scripts=['meds-extract-range','meds-extract-catalog']
 
 scripts=[os.path.join('./scripts', s) for s in scripts]
 
