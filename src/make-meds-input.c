@@ -141,7 +141,7 @@ fitsfile *open_fits(const char *filename)
     fitsfile *fits=NULL;
     int fitserr=0;
 
-    fits_open_file(&fits,filename,READWRITE,&fitserr);
+    fits_open_file(&fits,filename,READONLY,&fitserr);
     if (fitserr != 0) {
         fits_report_error(stderr,fitserr);
         exit(1);
