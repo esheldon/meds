@@ -117,7 +117,6 @@ void get_colnums(fitsfile *fits, struct colnums *colnums)
     colnums->colmax=get_colnum(fits, "XMAX_IMAGE");
 
     colnums->flux_radius=get_colnum(fits, "FLUX_RADIUS");
-    //colnums->ellipticity=get_colnum(fits, "ELLIPTICITY");
     colnums->a_world=get_colnum(fits, "A_WORLD");
     colnums->b_world=get_colnum(fits, "B_WORLD");
 }
