@@ -10,7 +10,7 @@
    The box sizes will be size 2^N or 3*2^N
 
    The input fits catalog should have columns 
-       alphamodel_j2000, deltamodel_j2000
+       alphawin_j2000, deltawin_j2000
        x_image y_image
        xmin_image xmax_image ymin_image ymax_image
        flux_radius
@@ -106,8 +106,8 @@ int get_colnum(fitsfile *fits, const char *colname)
 
 void get_colnums(fitsfile *fits, struct colnums *colnums)
 {
-    colnums->ra=get_colnum(fits, "ALPHAMODEL_J2000");
-    colnums->dec=get_colnum(fits, "DELTAMODEL_J2000");
+    colnums->ra=get_colnum(fits, "ALPHAWIN_J2000");
+    colnums->dec=get_colnum(fits, "DELTAWIN_J2000");
     colnums->row=get_colnum(fits, "Y_IMAGE");
     colnums->col=get_colnum(fits, "X_IMAGE");
 
