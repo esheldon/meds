@@ -186,7 +186,7 @@ class MEDS(object):
             Index of the cutout for this object.
         type: string, optional
             Cutout type. Default is 'image'.  Allowed
-            values are 'image','weight'
+            values are 'image','weight','seg'
 
         returns
         -------
@@ -214,7 +214,7 @@ class MEDS(object):
             Index of the object
         type: string, optional
             Cutout type. Default is 'image'.  Allowed
-            values are 'image','weight'
+            values are 'image','weight','seg'
 
         returns
         -------
@@ -249,7 +249,7 @@ class MEDS(object):
             Index of the object
         type: string, optional
             Cutout type. Default is 'image'.  Allowed
-            values are 'image','weight'
+            values are 'image','weight','seg'
 
         returns
         -------
@@ -272,10 +272,7 @@ class MEDS(object):
         iobj:
             Index of the object
         icutout:
-            Inde xof cutout
-        type: string, optional
-            Cutout type. Default is 'image'.  Allowed
-            values are 'image','weight'
+            Index of cutout
 
         returns
         -------
@@ -296,9 +293,6 @@ class MEDS(object):
         ----------
         iobj:
             Index of the object
-        type: string, optional
-            Cutout type. Default is 'image'.  Allowed
-            values are 'image','weight'
 
         returns
         -------
@@ -329,9 +323,6 @@ class MEDS(object):
         ----------
         iobj:
             Index of the object
-        type: string, optional
-            Cutout type. Default is 'image'.  Allowed
-            values are 'image','weight'
 
         returns
         -------
@@ -527,12 +518,12 @@ class MEDS(object):
         """
         self._check_indices(iobj,icutout=icutout)
 
-        row0 = self['cutout_row'][iobj,icutout]
-        col0 = self['cutout_col'][iobj,icutout]
-        dudrow=self['dudrow'][iobj,icutout]
-        dudcol=self['dudcol'][iobj,icutout]
-        dvdrow=self['dvdrow'][iobj,icutout]
-        dvdcol=self['dvdcol'][iobj,icutout]
+        row0   = self['cutout_row'][iobj,icutout]
+        col0   = self['cutout_col'][iobj,icutout]
+        dudrow = self['dudrow'][iobj,icutout]
+        dudcol = self['dudcol'][iobj,icutout]
+        dvdrow = self['dvdrow'][iobj,icutout]
+        dvdcol = self['dvdcol'][iobj,icutout]
 
         return {'row0':row0,
                 'col0':col0,
@@ -712,5 +703,75 @@ def split_mosaic(mosaic):
         imlist.append( mosaic[r1:r2, :] )
 
     return imlist
+
+def reject_outliers(imlist, wtlist, nsigma=5.0, A=0.3):
+    """
+    Set the weight for outlier pixels to zero
+
+    Algorithm
+    ---------
+
+    Reject pixels for which
+
+     | im - med | > n*sigma_i + A*|med|
+
+    where mu is the median
+
+    I actually do
+
+        wt*(im-med)**2 > (n + A*|med|*sqrt(wt))**2
+
+    We wrongly assume the images all align, but this is ok as long as nsigma is
+    high enough
+
+    If the number of images is < 3 then the weight maps are not modified
+
+    credit
+    ------
+    Algorithm based on discussions with Daniel Gruen
+    """
+
+    nreject=0
+
+    nim=len(imlist)
+    if nim < 3:
+        return nreject
+
+    dims=imlist[0].shape
+    imstack = numpy.zeros( (nim, dims[0], dims[1]) )
+
+    for i,im in enumerate(imlist):
+        imstack[i,:,:] = im
+
+    med=numpy.median(imstack, axis=0)
+
+    for i in xrange(nim):
+        im=imlist[i]
+        wt=wtlist[i]
+
+        wt.clip(0.0, out=wt)
+
+        ierr = numpy.sqrt(wt)
+
+        # wt*(im-med)**2
+        chi2_image = im.copy()
+        chi2_image -= med
+        chi2_image *= chi2_image
+        chi2_image *= wt
+
+        # ( n + A*|med|*sqrt(wt) )**2
+        maxvals = numpy.abs(med)
+        maxvals *= A
+        maxvals *= ierr
+        maxvals += nsigma
+        maxvals *= maxvals
+
+        w=numpy.where(chi2_image > maxvals)
+
+        if w[0].size > 0:
+            wt[w] = 0.0
+            nreject += w[0].size
+
+    return nreject
 
 
