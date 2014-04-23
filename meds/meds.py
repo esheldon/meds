@@ -350,7 +350,7 @@ class MEDS(object):
         iobj:
             Index of the object
         icutout:
-            Inde xof cutout
+            Index of cutout
 
         returns
         -------
@@ -424,7 +424,59 @@ class MEDS(object):
         seglist = split_mosaic(segmosaic)
         return seglist
 
+    def interpolate_coadd_seg(self, iobj, icutout):
+        """
+        interpolate the coadd segmentation map onto the SE image frame
 
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        icutout:
+            Index of cutout
+        """
+
+        coadd_seg = self.get_cutout(iobj, 0, type='seg')
+        if icutout==0:
+            return coadd_seg
+
+        seg = 0*coadd_seg.copy()
+
+
+        se_jacob=self.get_jacobian_matrix(iobj, icutout)
+        coadd_jacob=self.get_jacobian_matrix(iobj, 0)
+
+        coadd_rowcen=self['cutout_row'][iobj,0]
+        coadd_colcen=self['cutout_col'][iobj,0]
+        rowcen=self['cutout_row'][iobj,icutout]
+        colcen=self['cutout_col'][iobj,icutout]
+
+        # rows in SE seg mape
+        rows,cols=numpy.mgrid[0:seg.shape[0], 0:seg.shape[1]]
+        rowsrel = rows-rowcen
+        colsrel = cols-colcen
+
+        # this will raise a numpy.linalg.linalg.LinAlgError exception
+        cjinv = coadd_jacob.getI()
+
+        # convert pixel coords in SE cutout to u,v
+        u = rowsrel*se_jacob[0,0] + colsrel*se_jacob[0,1]
+        v = rowsrel*se_jacob[1,0] + colsrel*se_jacob[1,1]
+
+        # now convert into pixels for coadd
+        crow = coadd_rowcen + u*cjinv[0,0] + v*cjinv[0,1]
+        ccol = coadd_colcen + u*cjinv[1,0] + v*cjinv[1,1]
+
+        crow = crow.astype('i8')
+        ccol = ccol.astype('i8')
+
+        # clipping makes the notation easier
+        crow = crow.clip(0,coadd_seg.shape[0]-1)
+        ccol = ccol.clip(0,coadd_seg.shape[1]-1)
+
+        seg[rows, cols] = coadd_seg[crow, ccol]
+
+        return seg
 
     def get_source_info(self, iobj, icutout):
         """
