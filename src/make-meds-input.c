@@ -13,7 +13,7 @@
        alphamodel_j2000, deltamodel_j2000
        x_image y_image
        xmin_image xmax_image ymin_image ymax_image
-       flux_radius
+       flux_radius a_world b_world
 */
 #include <stdio.h>
 #include <stdlib.h>
