@@ -337,6 +337,49 @@ class MEDS(object):
         wlist = split_mosaic(wtmosaic)
         return wlist
 
+    def get_cweight_cutout_nearest(self, iobj, icutout):
+        """
+        get the cweight map and zero out pixels not nearest to central object
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        icutout:
+            Index of cutout
+
+        returns
+        -------
+        The weight map
+
+        Adapted from Niall Maccrann and Joe Zuntz
+        """
+
+        weight = self.get_cweight_cutout(iobj, icutout)
+        seg    = self.interpolate_coadd_seg(iobj, icutout)
+
+        # First get all indices of all seg map pixels which contain an object
+        # i.e. are not equal to zero
+
+        obj_inds = numpy.where(seg != 0)
+
+        # the seg map holds the sextractor number, 1 offset
+        object_number = self['number'][iobj]
+
+        # Then loop through pixels in seg map, check which obj ind it is closest
+        # to.  If the closest obj ind does not correspond to the target, set this
+        # pixel in the weight map to zero.
+
+        for i,row in enumerate(seg):
+            for j, element in enumerate(row):
+                obj_dists = (i-obj_inds[0])**2 + (j-obj_inds[1])**2
+                ind_min=numpy.argmin(obj_dists)
+
+                segval = seg[obj_inds[0][ind_min],obj_inds[1][ind_min]]
+                if segval != object_number:
+                    weight[i,j] = 0.
+
+        return weight
 
     def get_cseg_cutout(self, iobj, icutout):
         """
@@ -424,6 +467,21 @@ class MEDS(object):
         seglist = split_mosaic(segmosaic)
         return seglist
 
+    def interpolate_coadd_seg_mosaic(self, iobj):
+        """
+        get a mosaic of interpolated seg maps
+        """
+        seg_mosaic=self.get_mosaic(iobj,type='seg')
+
+        segs=split_mosaic(seg_mosaic)
+
+        for icutout,seg in enumerate(segs):
+            if icutout==0:
+                continue
+
+            seg[:,:] = self.interpolate_coadd_seg(iobj, icutout)
+        return seg_mosaic
+
     def interpolate_coadd_seg(self, iobj, icutout):
         """
         interpolate the coadd segmentation map onto the SE image frame
@@ -467,8 +525,8 @@ class MEDS(object):
         crow = coadd_rowcen + u*cjinv[0,0] + v*cjinv[0,1]
         ccol = coadd_colcen + u*cjinv[1,0] + v*cjinv[1,1]
 
-        crow = crow.astype('i8')
-        ccol = ccol.astype('i8')
+        crow = crow.round().astype('i8')
+        ccol = ccol.round().astype('i8')
 
         # clipping makes the notation easier
         crow = crow.clip(0,coadd_seg.shape[0]-1)
@@ -686,8 +744,8 @@ class MEDS(object):
             crow = coadd_rowcen + u*cjinv[0,0] + v*cjinv[0,1]
             ccol = coadd_colcen + u*cjinv[1,0] + v*cjinv[1,1]
 
-            crow = crow.astype('i8')
-            ccol = ccol.astype('i8')
+            crow = crow.round().astype('i8')
+            ccol = ccol.round().astype('i8')
 
             wbad=numpy.where(   (crow < 0) | (crow >= coadd_seg.shape[0])
                               & (ccol < 0) | (ccol >= coadd_seg.shape[1]) )
