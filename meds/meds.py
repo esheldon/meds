@@ -793,6 +793,12 @@ class MEDS(object):
     def __getitem__(self, item):
         return self._cat[item]
 
+    def __enter__(self):
+        return self
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._fits.close()
+
+
     @property
     def size(self):
         return self._cat.size
