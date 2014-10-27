@@ -119,6 +119,9 @@ class MEDS(object):
     # get a cutout for the segmentation map
     seg=m.get_cutout(35,3,type='seg')
 
+    # get a cutout for the bitmask map
+    seg=m.get_cutout(35,3,type='bmask')
+
     # get the source filename for cutout 3 for object 35
     fname=m.get_source_path(35,3)
 
@@ -186,7 +189,7 @@ class MEDS(object):
             Index of the cutout for this object.
         type: string, optional
             Cutout type. Default is 'image'.  Allowed
-            values are 'image','weight','seg'
+            values are 'image','weight','seg','bmask'
 
         returns
         -------
@@ -650,9 +653,8 @@ class MEDS(object):
         ----------
         iobj:
             Index of the object
-        type: string, optional
-            Cutout type. Default is 'image'.  Allowed
-            values are 'image','weight'
+        icutout: integer
+            Index of the cutout for this object.
 
         returns
         -------
@@ -769,6 +771,8 @@ class MEDS(object):
             return "weight_cutouts"
         elif type=="seg":
             return "seg_cutouts"
+        elif type=="bmask":
+            return "bmask_cutouts"
         else:
             raise ValueError("bad cutout type '%s'" % type)
 
