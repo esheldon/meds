@@ -54,7 +54,10 @@ class MEDSNumberExtractor(object):
     def _get_inds(self, data):
         inds = []
         for number in self.numbers:
-            q, = numpy.where(number == data['number'])
+            if number == data['number'][number-1]:
+                q = [number-1]
+            else:
+                q, = numpy.where(number == data['number'])
             assert len(q) == 1, "Could not find or found duplicate number: number = %ld, found %ld" % (number,len(q))
             inds.append(q[0])
         inds = numpy.array(inds,dtype=int)
