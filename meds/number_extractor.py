@@ -26,14 +26,17 @@ class MEDSNumberExtractor(object):
     """
     def __init__(self, meds_file, numbers, sub_file, cleanup=False):
         self.meds_file=meds_file
-        self.numbers = numpy.array(numbers,dtype=int)
+        nums = numpy.array(numbers,dtype=int)
+        unums = numpy.unique(nums)
+        assert len(nums) == len(unums), "Input numbers must be unique! len(numbers) = %ld, len(unique(numbers)) = %ld" % (len(nums),len(unums))
+        self.numbers = nums
         self.sub_file=sub_file
         self.cleanup=cleanup
         self._check_inputs()
-
+        
         q = numpy.argsort(self.numbers)
         self.numbers = self.numbers[q]
-                
+        
         self._extract()
 
     def __enter__(self):
@@ -54,7 +57,7 @@ class MEDSNumberExtractor(object):
     def _get_inds(self, data):
         inds = []
         for number in self.numbers:
-            if number == data['number'][number-1]:
+            if number <= len(data['number']) and number >= 1 and number == data['number'][number-1]:
                 q = [number-1]
             else:
                 q, = numpy.where(number == data['number'])
