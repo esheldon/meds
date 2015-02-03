@@ -341,7 +341,7 @@ class MEDS(object):
         wlist = split_mosaic(wtmosaic)
         return wlist
 
-    def get_cweight_cutout_nearest(self, iobj, icutout, fast=True, leafsize=40):
+    def get_cweight_cutout_nearest(self, iobj, icutout, fast=True):
         """
         get the cweight map and zero out pixels not nearest to central object
 
@@ -362,6 +362,10 @@ class MEDS(object):
         weight = self.get_cweight_cutout(iobj, icutout)
         seg    = self.interpolate_coadd_seg(iobj, icutout)
 
+        #if only have sky and object, then just return
+        if len(numpy.unique(seg)) == 2:
+            return weight
+        
         # First get all indices of all seg map pixels which contain an object
         # i.e. are not equal to zero
 
