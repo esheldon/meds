@@ -1,3 +1,5 @@
+// vim: set tabstop=8 shiftwidth=2 :
+// above to match Matt's settings
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -7,7 +9,7 @@
 #include <setjmp.h>
 
 static PyObject * uberseg_direct(PyObject* self, PyObject* args) {
-  int dmin,d,x,y,k,imin; 
+  int dmin=0,d=0,x=0,y=0,k=0,imin=0; 
 
   PyObject* seg = NULL;
   PyObject* weight = NULL;
@@ -85,9 +87,9 @@ struct mytype{int64_t idx; int64_t seg; FAST3TREE_FLOATTYPE pos[2];};
 #include "fast3tree.c"
 
 static PyObject * uberseg_tree(PyObject* self, PyObject* args) {
-  int x,y,k,segmin;
-  float dmin,r,dx,d;
-  float pos[2],fac;
+  int x=0,y=0,k=0,segmin=0;
+  float dmin=0,r=0,dx=0,d=0;
+  float pos[2],fac=0;
 
   PyObject* seg = NULL;
   PyObject* weight = NULL;
@@ -218,8 +220,11 @@ static PyMethodDef methods[] = {
   {NULL}  /* Sentinel */
 };
 
+#ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
+#define PyMODINIT_FUNC void
+#endif
 PyMODINIT_FUNC
-init_uberseg()
+init_uberseg(void) 
 {
   PyObject* m = NULL;
 

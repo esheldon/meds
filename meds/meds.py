@@ -379,9 +379,9 @@ class MEDS(object):
             Nx,Ny = seg.shape
             Ninds = len(obj_inds[0])
             seg = seg.astype(numpy.int32)
-            weight = weight.astype(numpy.float32)
-            obj_inds_x = obj_inds[0].astype(numpy.int32)
-            obj_inds_y = obj_inds[1].astype(numpy.int32)
+            weight = weight.astype(numpy.float32,copy=False)
+            obj_inds_x = obj_inds[0].astype(numpy.int32,copy=False)
+            obj_inds_y = obj_inds[1].astype(numpy.int32,copy=False)
             _uberseg.uberseg_tree(seg,weight,Nx,Ny,object_number,obj_inds_x,obj_inds_y,Ninds)
         else:
             # Then loop through pixels in seg map, check which obj ind it is closest
