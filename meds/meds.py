@@ -22,6 +22,7 @@ See docs for the MEDS class for more info
 
 import numpy
 import fitsio
+from . import _uberseg
 
 class MEDS(object):
     """
@@ -340,7 +341,7 @@ class MEDS(object):
         wlist = split_mosaic(wtmosaic)
         return wlist
 
-    def get_cweight_cutout_nearest(self, iobj, icutout):
+    def get_cweight_cutout_nearest(self, iobj, icutout, fast=True):
         """
         get the cweight map and zero out pixels not nearest to central object
 
@@ -361,6 +362,10 @@ class MEDS(object):
         weight = self.get_cweight_cutout(iobj, icutout)
         seg    = self.interpolate_coadd_seg(iobj, icutout)
 
+        #if only have sky and object, then just return
+        if len(numpy.unique(seg)) == 2:
+            return weight
+        
         # First get all indices of all seg map pixels which contain an object
         # i.e. are not equal to zero
 
@@ -368,19 +373,29 @@ class MEDS(object):
 
         # the seg map holds the sextractor number, 1 offset
         object_number = self['number'][iobj]
+        
+        if fast:
+            #call fast c code with tree
+            Nx,Ny = seg.shape
+            Ninds = len(obj_inds[0])
+            seg = seg.astype(numpy.int32)
+            weight = weight.astype(numpy.float32)
+            obj_inds_x = obj_inds[0].astype(numpy.int32)
+            obj_inds_y = obj_inds[1].astype(numpy.int32)
+            _uberseg.uberseg_tree(seg,weight,Nx,Ny,object_number,obj_inds_x,obj_inds_y,Ninds)
+        else:
+            # Then loop through pixels in seg map, check which obj ind it is closest
+            # to.  If the closest obj ind does not correspond to the target, set this
+            # pixel in the weight map to zero.
 
-        # Then loop through pixels in seg map, check which obj ind it is closest
-        # to.  If the closest obj ind does not correspond to the target, set this
-        # pixel in the weight map to zero.
+            for i,row in enumerate(seg):
+                for j, element in enumerate(row):
+                    obj_dists = (i-obj_inds[0])**2 + (j-obj_inds[1])**2
+                    ind_min=numpy.argmin(obj_dists)
 
-        for i,row in enumerate(seg):
-            for j, element in enumerate(row):
-                obj_dists = (i-obj_inds[0])**2 + (j-obj_inds[1])**2
-                ind_min=numpy.argmin(obj_dists)
-
-                segval = seg[obj_inds[0][ind_min],obj_inds[1][ind_min]]
-                if segval != object_number:
-                    weight[i,j] = 0.
+                    segval = seg[obj_inds[0][ind_min],obj_inds[1][ind_min]]
+                    if segval != object_number:
+                        weight[i,j] = 0.
 
         return weight
 
