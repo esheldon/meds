@@ -650,7 +650,7 @@ static inline void _fast3tree_find_minmax(struct tree3_node *node) {
   FAST3TREE_TYPE * p = node->points;
   //assert(node->num_points > 0);
   if(node->num_points == 0)
-    longjmp(UbersegError_JMP_BUFF,2);
+    exit(1);
   for (j=0; j<FAST3TREE_DIM; j++) node->min[j] = node->max[j] = p[0].pos[j];
   for (i=1; i<node->num_points; i++)  {
     for (j=0; j<FAST3TREE_DIM; j++) {
@@ -757,9 +757,9 @@ void _fast3tree_build(struct fast3tree *t) {
   //for (j=0; j<FAST3TREE_DIM; j++) assert(isfinite(root->max[j]));
   for (j=0; j<FAST3TREE_DIM; j++) {
     if(!isfinite(root->min[j]))
-      longjmp(UbersegError_JMP_BUFF,3);
+      exit(1);
     if(!isfinite(root->max[j]))
-      longjmp(UbersegError_JMP_BUFF,3);
+      exit(1);
   }
 
   if (root->num_points > POINTS_PER_LEAF)
@@ -794,11 +794,8 @@ void _fast3tree_maxmin_rebuild(struct tree3_node *n) {
 void *_fast3tree_check_realloc(void *ptr, size_t size, char *reason) {
   void *res = realloc(ptr, size);
   if ((res == NULL) && (size > 0)) {
-    //fprintf(stderr, "[Error] Failed to allocate memory (%s)!\n", reason);
-    //exit(1);
-
-    fprintf(stdout, "[Error] Failed to allocate memory (%s)!\n", reason);
-    longjmp(UbersegError_JMP_BUFF,1);
+    fprintf(stderr, "[Error] Failed to allocate memory (%s)!\n", reason);
+    exit(1);
   }
   return res;
 }
