@@ -187,7 +187,10 @@ struct meds_cat {
 
 struct meds_image_info {
     long size;
+    long id;         // new
+    long flags;      //new
     char* image_path;
+    char* wcs_path;   //new
     char* sky_path;
     char* seg_path;
     double magzp;

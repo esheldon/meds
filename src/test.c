@@ -128,14 +128,21 @@ int main(int argc, char **argv)
     meds_print(meds, stdout);
 
     long nobj=meds_get_size(meds);
+
+    printf("\nprinting first object\n");
     meds_obj_print(&meds->cat->data[0], stdout);
+    printf("\nprinting last object\n");
     meds_obj_print(&meds->cat->data[nobj-1], stdout);
 
     long nimage=meds->image_info->size;
+    printf("\nprinting first image info\n");
     meds_image_info_print(&meds->image_info->data[0], stdout);
+    printf("\nprinting first last info\n");
     meds_image_info_print(&meds->image_info->data[nimage-1], stdout);
 
+    printf("\nTesting cutout\n");
     test_cutout(meds);
 
+    printf("\nCleaning up\n");
     meds=meds_free(meds);
 }

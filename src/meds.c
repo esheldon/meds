@@ -518,6 +518,7 @@ static struct meds_info_cat *meds_info_cat_new(long size, long namelen_max)
     for (long i=0; i<size; i++) {
         struct meds_image_info *info = &self->data[i];
         info->image_path = calloc(namelen_max, sizeof(char));
+        info->wcs_path = calloc(namelen_max, sizeof(char));
         info->sky_path = calloc(namelen_max, sizeof(char));
         info->seg_path = calloc(namelen_max, sizeof(char));
 
@@ -538,6 +539,7 @@ static struct meds_info_cat *meds_info_cat_free(struct meds_info_cat *self)
         for (long i=0; i<self->size; i++) {
             struct meds_image_info *info = &self->data[i];
             free(info->image_path);
+            free(info->wcs_path);
             free(info->sky_path);
             free(info->seg_path);
         }
@@ -554,6 +556,7 @@ static int load_image_info(struct meds_info_cat *self, fitsfile *fits)
     int colnum=1;
     char* nulstr=" ";
     double dblnul=0;
+    long lonul=0;
     LONGLONG firstelem=1;
     LONGLONG nelem=1;
 
@@ -563,32 +566,55 @@ static int load_image_info(struct meds_info_cat *self, fitsfile *fits)
 
         long row = i+1;
 
-        colnum=1;
+        colnum=get_colnum(fits, "image_id");
+        if (fits_read_col_lng(fits, colnum, row, firstelem, nelem,
+                              lonul, &info->id, NULL, &status)) {
+            fits_report_error(stderr,status);
+            return 0;
+        }
+        colnum=get_colnum(fits, "image_flags");
+        if (fits_read_col_lng(fits, colnum, row, firstelem, nelem,
+                              lonul, &info->flags, NULL, &status)) {
+            fits_report_error(stderr,status);
+            return 0;
+        }
+
+        colnum=get_colnum(fits, "image_path");
         if (fits_read_col_str(fits, colnum, row, firstelem, nelem,
                               nulstr, &info->image_path, NULL, &status)) {
             fits_report_error(stderr,status);
             return 0;
         }
-        colnum=2;
+
+        colnum=get_colnum(fits, "wcs_path");
+        if (fits_read_col_str(fits, colnum, row, firstelem, nelem,
+                              nulstr, &info->wcs_path, NULL, &status)) {
+            fits_report_error(stderr,status);
+            return 0;
+        }
+
+
+        colnum=get_colnum(fits, "sky_path");
         if (fits_read_col_str(fits, colnum, row, firstelem, nelem,
                               nulstr, &info->sky_path, NULL, &status)) {
             fits_report_error(stderr,status);
             return 0;
         }
-        colnum=3;
+
+        colnum=get_colnum(fits, "seg_path");
         if (fits_read_col_str(fits, colnum, row, firstelem, nelem,
                               nulstr, &info->seg_path, NULL, &status)) {
             fits_report_error(stderr,status);
             return 0;
         }
 
-        colnum=4;
+        colnum=get_colnum(fits, "magzp");
         if (fits_read_col_dbl(fits, colnum, row, firstelem, nelem,
                               dblnul, &info->magzp, NULL, &status)) {
             fits_report_error(stderr,status);
             return 0;
         }
-        colnum=5;
+        colnum=get_colnum(fits, "scale");
         if (fits_read_col_dbl(fits, colnum, row, firstelem, nelem,
                               dblnul, &info->scale, NULL, &status)) {
             fits_report_error(stderr,status);
@@ -603,14 +629,19 @@ static int load_image_info(struct meds_info_cat *self, fitsfile *fits)
 static long get_namelen_max(fitsfile *fits)
 {
     long src_name_len = get_array_col_size(fits,"image_path");
+    long wcs_name_len = get_array_col_size(fits,"wcs_path");
     long sky_name_len = get_array_col_size(fits,"sky_path");
     long seg_name_len = get_array_col_size(fits,"seg_path");
+
     long namelen_max=src_name_len;
 
-    if (sky_name_len > src_name_len) {
+    if (wcs_name_len > namelen_max) {
         namelen_max=sky_name_len;
     }
-    if (seg_name_len > src_name_len) {
+    if (sky_name_len > namelen_max) {
+        namelen_max=sky_name_len;
+    }
+    if (seg_name_len > namelen_max) {
         namelen_max=seg_name_len;
     }
 
