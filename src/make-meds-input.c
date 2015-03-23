@@ -30,6 +30,8 @@ static int SIZES[]={2,3,4,6,8,12,16,24,32,48,64,96,128,192,256,
 static long NSIZES=sizeof(SIZES)/sizeof(int);
 
 struct obj {
+    long id; // optionally read from extra file
+
     double ra;
     double dec;
     double row;
@@ -63,6 +65,7 @@ struct colnums {
 
 struct cat {
     long size;
+    int has_id;
     struct obj *data;
 };
 
@@ -221,6 +224,8 @@ void load_rows(fitsfile *fits, struct cat *cat)
 struct cat *read_cat(const char *fname)
 {
     int fitserr=0;
+
+    fprintf(stderr,"reading cat: %s\n",fname);
     fitsfile *fits=open_fits(fname);
     fits_goto_hdu(fits, CAT_HDU);
 
@@ -232,6 +237,40 @@ struct cat *read_cat(const char *fname)
     fits_close_file(fits, &fitserr);
 
     return cat;
+}
+
+void cat_add_id_from_file(struct cat* cat, const char *id_file)
+{
+    FILE *fptr;
+
+    fprintf(stderr,"adding ids from %s\n", id_file);
+
+    fptr=fopen(id_file,"r");
+    if (fptr == NULL) {
+        fprintf(stderr,"error: failed to open id file: %s\n", id_file);
+        exit(1);
+    }
+
+    long id;
+    long i=0;
+    while(fscanf(fptr,"%ld",&id)==1) {
+
+        if (i >= cat->size) {
+            fprintf(stderr,"error: id file is too large: %ld > %ld\n", i+1, cat->size);
+            exit(1);
+        }
+        cat->data[i].id = id;
+        i+=1;
+    }
+    fclose(fptr);
+
+    if (i != cat->size) {
+        fprintf(stderr,"error: id file is too small, %ld instead of %ld\n", i, cat->size);
+        exit(1);
+    }
+
+    cat->has_id=1;
+
 }
 
 // write the full object
@@ -256,14 +295,20 @@ void cat_write(struct cat *self, FILE *stream)
 }
 
 // this is the actual input to make-cutouts
-void cat_write_meds(struct cat *self)
+void cat_write_meds_input(struct cat *self)
 {
-    struct obj *obj=self->data;
     for (long i=0; i<self->size; i++) {
+
+        struct obj *obj = &self->data[i];
+
+        if (self->has_id) {
+            printf("%ld ", obj->id);
+        }
+
         printf("%.16g %.16g %.16g %.16g %d\n",
                obj->ra, obj->dec, obj->row, obj->col,
                obj->box_size);
-        obj++;
+
     }
 }
 
@@ -331,7 +376,7 @@ void set_box_sizes(struct cat *self, int minsize, int maxsize)
 int main(int argc, char **argv)
 {
     if (argc < 4) {
-        fprintf(stderr,"usage: make-meds-input fitsfile minsize maxsize\n");
+        fprintf(stderr,"usage: make-meds-input fitsfile minsize maxsize [id_file]\n");
         fprintf(stderr,"  results go to stdout\n");
         exit(1);
     }
@@ -348,8 +393,13 @@ int main(int argc, char **argv)
 
     struct cat *cat=read_cat(infile);
 
+    if (argc > 4) {
+        // we have been sent an id file to read
+        cat_add_id_from_file(cat, argv[4]);
+    }
+
     set_box_sizes(cat, minsize, maxsize);
 
-    cat_write_meds(cat);
+    cat_write_meds_input(cat);
     cat=cat_free(cat);
 }

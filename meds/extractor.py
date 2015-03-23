@@ -134,7 +134,7 @@ class MEDSExtractor(object):
         cstart    = data['start_row'][ifirst,0]
 
         ncutout_last = data['ncutout'][ilast]
-        npix_last = data['box_size'][ilast]**2 * ncutout_last
+        npix_last = data['box_size'][ilast]**2
         cend     = data['start_row'][ilast,ncutout_last-1] + npix_last
 
         """

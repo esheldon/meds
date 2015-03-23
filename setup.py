@@ -1,17 +1,23 @@
 import os
 import glob
-from distutils.core import setup
+from distutils.core import setup, Extension
+import numpy
 
 scripts=['meds-extract-range','meds-extract-catalog']
-
 scripts=[os.path.join('./scripts', s) for s in scripts]
+
+sources=["meds/_uberseg.c"]
+include_dirs=[numpy.get_include()]
+ext=Extension("meds._uberseg", sources)
 
 setup(name="meds", 
       version="0.1.0",
       description="Python and C libraries for reading MEDS files",
-      license = "GPL",
+      license = "GNU GPLv3",
       author="Erin Scott Sheldon",
       author_email="erin.sheldon@gmail.com",
       packages=['meds'],
+      ext_modules=[ext],
+      include_dirs=include_dirs,
       scripts=scripts)
 
