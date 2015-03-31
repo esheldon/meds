@@ -53,7 +53,7 @@ seg=m.get_cutout(index, cutout_index, type=’seg’)
 wt=m.get_cutout(index, cutout_index, type=’weight’)
 mask=m.get_cutout(index, cutout_index, type=’bmask’)
 
-# get a list of all cutouts for this object
+# get a python list of all cutouts for this object
 imlist=m.get_cutout_list(index)
 seglist=m.get_cutout_list(index,type=’seg’)
 
