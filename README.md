@@ -30,6 +30,42 @@ installing the python library
 
     make sure it is on your PYTHONPATH
 
+examples
+########
+```python
+
+import meds
+
+# create a MEDS object for the given MEDS file
+m=meds.MEDS(filename)
+
+# read a cutout for object 35, cutout index 5
+index=35
+cutout_index=5
+image=m.get_cutout(index, cutout_index)
+
+# the coadd is always cutout_index=0
+cutout_index=0
+coadd=m.get_cutout(index, cutout_index)
+
+# get other image types
+seg=m.get_cutout(index, cutout_index, type=’seg’)
+wt=m.get_cutout(index, cutout_index, type=’weight’)
+mask=m.get_cutout(index, cutout_index, type=’bmask’)
+
+# get a list of all cutouts for this object
+imlist=m.get_cutout_list(index)
+seglist=m.get_cutout_list(index,type=’seg’)
+
+# The contents of the object data table is loaded when the MEDS object is
+# created, and are accessible by name.
+
+# number of cutouts
+ncutout=m[’ncutout’][index]
+for i in xrange(ncutout):
+    imlist=m.get_cutout_list(i)
+    # process the images
+```
 
 C library
 ------------------------
