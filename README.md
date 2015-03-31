@@ -65,6 +65,17 @@ ncutout=m[’ncutout’][index]
 for i in xrange(ncutout):
     imlist=m.get_cutout_list(i)
     # process the images
+
+# get the jacobian of the WCS transformation
+# as a dict
+j=m.get_jacobian(index, cutout_index)
+# as a numpy matrix
+j=m.get_jacobian_matrix(index, cutout_index)
+# list for all cutouts
+jlist=m.get_jacobian_list(index)
+
+# get the "ubserseg" weight map
+wt=m.get_cweight_cutout_nearest(index, cutout_index)
 ```
 
 C library
