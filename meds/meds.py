@@ -19,10 +19,16 @@ See docs for the MEDS class for more info
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-
+from __future__ import print_function
 import numpy
 import fitsio
-from . import _uberseg
+
+try:
+    from . import _uberseg
+    _have_c_ubserseg=True
+except ImportError:
+    print("could not load fast ubserseg")
+    _have_c_ubserseg=False
 
 class MEDS(object):
     """
@@ -374,7 +380,7 @@ class MEDS(object):
         # the seg map holds the sextractor number, 1 offset
         object_number = self['number'][iobj]
         
-        if fast:
+        if fast and _have_c_ubserseg:
             #call fast c code with tree
             Nx,Ny = seg.shape
             Ninds = len(obj_inds[0])
@@ -749,7 +755,7 @@ class MEDS(object):
             try:
                 cjinv = coadd_jacob.getI()
             except numpy.linalg.linalg.LinAlgError:
-                print 'coadd jacobian is singular, setting weight to zero'
+                print('coadd jacobian is singular, setting weight to zero')
                 cim[:,:] = 0.0
                 return cim
 
