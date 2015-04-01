@@ -4,7 +4,7 @@
 
 int main(int argc, char **argv)
 {
-    if (argc < 3) {
+    if (argc < 4) {
         printf("usage: meds-get-cutout meds_file outfile iobj [icutout]\n"
                "  extract a mosaic of all cutouts for the object of index\n"
                "  iobj.  If icutout is sent, only extract the cutout \n"
@@ -26,7 +26,7 @@ int main(int argc, char **argv)
     }
 
     struct meds_cutout *image = NULL;
-    if (argc > 3) {
+    if (argc > 4) {
         int icutout=atoi(argv[4]);
         image = meds_get_cutout(meds, index, icutout);
     } else {
@@ -37,6 +37,8 @@ int main(int argc, char **argv)
         int status=0;
         int clobber=1;
         meds_cutout_write_fits(image, outfile, clobber, &status);
+    } else {
+        fprintf(stderr,"failed to extract cutouts\n");
     }
 
     image=meds_cutout_free(image);
