@@ -814,7 +814,7 @@ class MEDS(object):
                                  "[0,%s)" % (icutout,iobj,ncutout))
 
     def __repr__(self):
-        return repr(self._fits[1])
+        return repr(self._fits['object_data'])
     def __getitem__(self, item):
         return self._cat[item]
 
