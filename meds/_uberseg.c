@@ -174,9 +174,16 @@ static PyObject * uberseg_tree(PyObject* self, PyObject* args) {
     }
   }
   
+  /*
   if(!obj) free(obj);
   if(!tree) fast3tree_free(&tree);
   if(!res) fast3tree_results_free(res);
+  */
+
+  free(obj);
+  fast3tree_free(&tree);
+  fast3tree_results_free(res);
+ 
   
   Py_INCREF(Py_None);
   return Py_None;
