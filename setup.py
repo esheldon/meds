@@ -8,7 +8,7 @@ scripts=[os.path.join('./scripts', s) for s in scripts]
 
 sources=["meds/_uberseg.c"]
 include_dirs=[numpy.get_include()]
-ext=Extension("meds._uberseg", sources)
+ext=Extension("meds._uberseg", sources, include_dirs=include_dirs)
 
 setup(name="meds", 
       version="0.1.0",
