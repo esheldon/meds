@@ -824,7 +824,7 @@ class MEDS(object):
     def __enter__(self):
         return self
     def __exit__(self, exception_type, exception_value, traceback):
-        self._fits.close()
+        self.close()
 
 
     @property
