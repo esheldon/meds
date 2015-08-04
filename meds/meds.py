@@ -184,6 +184,9 @@ class MEDS(object):
         self._image_info=self._fits["image_info"][:]
         self._meta=self._fits["metadata"][:]
 
+    def close(self):
+        self._fits.close()
+    
     def get_cutout(self, iobj, icutout, type='image'):
         """
         Get a single cutout for the indicated entry
