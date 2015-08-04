@@ -184,6 +184,9 @@ class MEDS(object):
         self._image_info=self._fits["image_info"][:]
         self._meta=self._fits["metadata"][:]
 
+    def close(self):
+        self._fits.close()
+    
     def get_cutout(self, iobj, icutout, type='image'):
         """
         Get a single cutout for the indicated entry
@@ -821,7 +824,7 @@ class MEDS(object):
     def __enter__(self):
         return self
     def __exit__(self, exception_type, exception_value, traceback):
-        self._fits.close()
+        self.close()
 
 
     @property
