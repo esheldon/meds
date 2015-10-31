@@ -5,12 +5,13 @@
    Input minsize and maxsize will be rounded up to nearest 2^N or
    3*2^N
 
-       ra dec row col box_size
+   The output file has the following format
+
+       id row col box_size
 
    The box sizes will be size 2^N or 3*2^N
 
    The input fits catalog should have columns 
-       alphawin_j2000, deltawin_j2000
        x_image y_image
        xmin_image xmax_image ymin_image ymax_image
        flux_radius a_world b_world
@@ -32,8 +33,6 @@ static long NSIZES=sizeof(SIZES)/sizeof(int);
 struct obj {
     long id; // optionally read from extra file
 
-    double ra;
-    double dec;
     double row;
     double col;
     int rowmin;
@@ -49,8 +48,6 @@ struct obj {
 };
 
 struct colnums {
-    int ra;
-    int dec;
     int row;
     int col;
     int rowmin;
@@ -65,7 +62,6 @@ struct colnums {
 
 struct cat {
     long size;
-    int has_id;
     struct obj *data;
 };
 
@@ -109,8 +105,6 @@ int get_colnum(fitsfile *fits, const char *colname)
 
 void get_colnums(fitsfile *fits, struct colnums *colnums)
 {
-    colnums->ra=get_colnum(fits, "ALPHAWIN_J2000");
-    colnums->dec=get_colnum(fits, "DELTAWIN_J2000");
     colnums->row=get_colnum(fits, "Y_IMAGE");
     colnums->col=get_colnum(fits, "X_IMAGE");
 
@@ -201,8 +195,9 @@ void load_rows(fitsfile *fits, struct cat *cat)
     struct obj *obj=cat->data;
     for (long row=1; row<=nrows; row++) {
 
-        obj->ra=fits_load_col_dbl(fits, colnums.ra, row);
-        obj->dec=fits_load_col_dbl(fits, colnums.dec, row);
+        // may be overwritten later if id_file was sent
+        obj->id = (row-1);
+
         obj->row=fits_load_col_dbl(fits, colnums.row, row);
         obj->col=fits_load_col_dbl(fits, colnums.col, row);
 
@@ -269,16 +264,14 @@ void cat_add_id_from_file(struct cat* cat, const char *id_file)
         exit(1);
     }
 
-    cat->has_id=1;
-
 }
 
 // write the full object
 void obj_write(struct obj *self, FILE *stream)
 {
     fprintf(stream,
-      "%.16g %.16g %.16g %.16g %d %d %d %d %.16g %.16g %d\n",
-      self->ra, self->dec, self->row, self->col,
+      "%.16g %.16g %d %d %d %d %.16g %.16g %d\n",
+      self->row, self->col,
       self->rowmin, self->rowmax, self->colmin, self->colmax,
       self->flux_radius, self->ellipticity, self->box_size);
 }
@@ -301,13 +294,8 @@ void cat_write_meds_input(struct cat *self)
 
         struct obj *obj = &self->data[i];
 
-        if (self->has_id) {
-            printf("%ld ", obj->id);
-        }
-
-        printf("%.16g %.16g %.16g %.16g %d\n",
-               obj->ra, obj->dec, obj->row, obj->col,
-               obj->box_size);
+        printf("%ld %.16g %.16g %d\n",
+               obj->id, obj->row, obj->col, obj->box_size);
 
     }
 }
