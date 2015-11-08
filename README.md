@@ -8,14 +8,13 @@ Description of the file format here
 
 A minimal C library is also provided for reading MEDS files
 
-# python library
+## Installing and using the libraries
 
-Instructions for installing and  using the python library are
+Full instructions for installing and using the python and C libraries are
 here: https://github.com/esheldon/meds/wiki
 
-# C library
 
-## examples for reading files
+### A few examples for reading files
 ```python
 
 import meds
@@ -28,8 +27,8 @@ index=35
 cutout_index=5
 image=m.get_cutout(index, cutout_index)
 
-# the coadd is always cutout_index=0
-cutout_index=0
+# read an image cutout
+cutout_index=1
 coadd=m.get_cutout(index, cutout_index)
 
 # get other image types
@@ -61,36 +60,3 @@ jlist=m.get_jacobian_list(index)
 # get the "ubserseg" weight map
 wt=m.get_cweight_cutout_nearest(index, cutout_index)
 ```
-
-C library
-------------------------
-
-This is a pure C library for working with MEDS.  Docs here
-    https://github.com/esheldon/meds/blob/master/src/meds.h
-The only requirement is an installation of cfitsio and gcc.
-
-installing the C library
-#############################
-
-    in the usual place
-        make install
-
-    in a different prefix
-        make install prefix=/some/path
-
-linking to the library
-#######################
-
-Include "meds.h" and use the following to link against the library.  Make sure
-to get the order correct
-
-    CC  ... -lmeds -lcfitsio -lm ...
-
-
-testing
----------
-You can test your build of the C libary using
-
-    ./src/test $medsfile
-
-Where $medsfile is the name of a MEDS fits file.
