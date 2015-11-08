@@ -14,7 +14,7 @@ python library
 The python library has a few external requirements.
 
 * numpy
-* For reading the FITS files, the fitsio python package is used.  fitsio https://github.com/esheldon/fitsio
+* For reading the FITS files, the fitsio python package is used:   https://github.com/esheldon/fitsio
 * For making MEDS files, the WCS class in esutil is used, as are some numerical python utilities: https://github.com/esheldon/esutil.  esutil is not required for reading files.
 
 
