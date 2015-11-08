@@ -86,6 +86,7 @@ class MEDSMaker(dict):
 
         """
 
+        print("opening output MEDS file: '%s'" % filename)
         with fitsio.FITS(filename,'rw',clobber=True) as fits:
             self.fits=fits
 
