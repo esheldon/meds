@@ -377,9 +377,7 @@ class MEDSMaker(dict):
         nim  = self.image_info.size
         nobj = obj_data.size
 
-        # FIXME do full image list
-        #for file_id in xrange(nim):
-        for file_id in xrange(3):
+        for file_id in xrange(nim):
 
             self._get_wcs(file_id)
             impath=self.image_info['image_path'][file_id].strip()
