@@ -1,3 +1,6 @@
+"""
+code to build MEDS files
+"""
 from __future__ import print_function
 import json
 import copy
@@ -33,16 +36,24 @@ class MEDSMaker(dict):
     image_info: numpy array with fields
         Information for each image.  For the required data type, see
         the meds.util.get_image_info_dtype() function.
+    config: dict, optional
+        Optional configuration parameters.  The available options
+        are given XXX
     meta_data: numpy array with fields, optional
         Optional meta data to write.  This is typically a length
         one array, but can be anything in principle.
     """
     def __init__(self,
-                 config,
                  obj_data,
                  image_info,
+                 config=None,
                  meta_data=None):
-        self.update(config)
+
+        if config is not None:
+            if not isinstance(config, dict):
+                raise RuntimeError("config must be a dict, "
+                                   "got %s" % type(config))
+            self.update(config)
 
         # make copies since we may alter some things
         self.image_info = image_info.copy()
