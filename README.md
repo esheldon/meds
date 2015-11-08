@@ -1,14 +1,12 @@
 meds
 ====
 
-Python and C libraries to work with Multi Epoch Data Structures
+A Python library to create and read Multi Epoch Data Structures
 
 Description of the file format here
-    https://cdcvs.fnal.gov/redmine/projects/deswlwg/wiki/Multi_Epoch_Data_Structure
+    https://github.com/esheldon/meds/wiki/MEDS-Format
 
-In addition to the libraries listed below, a program called make-meds-input is
-also installed under $prefix/bin.  This program converts a fits file to 
-an input file for the make-cutouts program (hosted elsewhere).
+A minimal C library is also provided for reading MEDS files
 
 python library
 -----------------------------
