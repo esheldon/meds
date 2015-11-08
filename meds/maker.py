@@ -18,10 +18,10 @@ from .util import \
         get_image_info_struct
 
 from .bounds import Bounds
+from .defaults import default_config
 
 
 SUPPORTED_CUTOUT_TYPES = ['image','weight','seg','bmask']
-DEFAULT_CUTOUT_TYPES=[]
 
 class MEDSMaker(dict):
     """
@@ -49,11 +49,8 @@ class MEDSMaker(dict):
                  config=None,
                  meta_data=None):
 
-        if config is not None:
-            if not isinstance(config, dict):
-                raise RuntimeError("config must be a dict, "
-                                   "got %s" % type(config))
-            self.update(config)
+        self._load_config(config)
+        self._set_extra_config()
 
         # make copies since we may alter some things
         self.image_info = image_info.copy()
@@ -62,7 +59,6 @@ class MEDSMaker(dict):
 
         self._force_box_sizes_even()
 
-        self._set_defaults()
 
     def write(self, filename):
         """
@@ -361,8 +357,6 @@ class MEDSMaker(dict):
             return 1.0
 
 
-
-
     def _build_meds_layout(self):
         """
         build the object data, filling in the stub we read
@@ -482,6 +476,8 @@ class MEDSMaker(dict):
 
     def _get_wcs(self, file_id):
         """
+        either load the wcs from the image_info, or from
+        the image header
         """
         if 'wcs' in self.image_info.dtype.names:
             wcs_string = self.image_info['wcs'][file_id]
@@ -609,8 +605,7 @@ class MEDSMaker(dict):
 
     def _set_cutout_types(self):
 
-        cutout_types = copy.deepcopy(self.get('cutout_types',
-                                              DEFAULT_CUTOUT_TYPES))
+        cutout_types = copy.deepcopy(self['cutout_types'])
 
         # make sure 'image' is at the front
         if 'image' in cutout_types:
@@ -716,18 +711,10 @@ class MEDSMaker(dict):
             s=', '.join(missing)
             raise ValueError("missing image_info entries: '%s'" % s)
 
-    def _set_defaults(self):
-
-        self._set_cutout_types()
-
-        # buffer bounds for first cull of objects not on chip
-        self['bounds_buffer_radec'] = self.get('bounds_buffer',0.25/60.0) # in deg
-
-        allowed = self.get('bitmask_allowed',0)
-        allowed = numpy.array([allowed],dtype='u4')
-        self['bitmask_allowed'] = allowed[0]
-        self['bitmask_allowed_inv'] = ~allowed[0]
-
+    def _set_extra_config(self):
+        """
+        set extra configuration parameters that are not user-controlled
+        """
         self['object_data_extname']  = 'object_data'
         self['image_info_extname'] = 'image_info'
         self['metadata_extname'] = 'metadata'
@@ -737,8 +724,22 @@ class MEDSMaker(dict):
         self['seg_cutout_extname']    = 'seg_cutouts'
         self['bmask_cutout_extname']  = 'bmask_cutouts'
 
-        self['image_dtype'] = self.get('image_dtype','f4')
-        self['weight_dtype'] = self.get('weight_dtype','f4')
-        self['seg_dtype'] = self.get('seg_dtype','i4')
-        self['bmask_dtype'] = self.get('bmask_dtype','i4')
+    def _load_config(self, config):
+        """
+        load the default config, then load the input config
+        """
+        self.update(default_config)
 
+        if config is not None:
+            if not isinstance(config, dict):
+                raise RuntimeError("config must be a dict, "
+                                   "got %s" % type(config))
+            self.update(config)
+
+        self._set_cutout_types()
+
+        # need this to be unsigned
+        allowed = self['bitmask_allowed']
+        allowed = numpy.array([allowed],dtype='u4')
+        self['bitmask_allowed'] = allowed[0]
+        self['bitmask_allowed_inv'] = ~allowed[0]

@@ -5,6 +5,7 @@ from .meds import split_mosaic, reject_outliers
 
 from . import bounds
 from . import util
+from . import defaults
 
 from . import maker
 from .maker import MEDSMaker
