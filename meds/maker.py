@@ -8,8 +8,15 @@ import numpy
 from numpy import where, zeros
 
 # external requirements
-import esutil as eu
 import fitsio
+
+# esutil is only needed for the Maker, so we will let
+# it slide if it is missing
+try:
+    import esutil as eu
+    have_esutil=True
+except:
+    have_esutil=False
 
 from .util import \
         make_wcs_positions, \
