@@ -6,7 +6,8 @@ default_config = {
     # allowed values in the bitmask image
     'bitmask_allowed': 0,
 
-    # cutout types in addition to 'image'
+    # cutout types in addition to 'image'.  Allowed values are
+    # ['weight','seg','bmask']
     'cutout_types': [],
 
     # default output data types for images

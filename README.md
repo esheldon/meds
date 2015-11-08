@@ -1,18 +1,13 @@
 meds
 ====
 
-A Python library to create and read Multi Epoch Data Structures
+A Python library to create and read Multi Epoch Data Structures. A minimal C
+library is also provided for reading MEDS files
 
-Description of the file format here
-    https://github.com/esheldon/meds/wiki/MEDS-Format
-
-A minimal C library is also provided for reading MEDS files
-
-## Installing and using the libraries
+## Documentation
 
 Full instructions for installing and using the python and C libraries are
 here: https://github.com/esheldon/meds/wiki
-
 
 ### A few examples for reading files
 ```python
