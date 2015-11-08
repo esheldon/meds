@@ -10,22 +10,10 @@ A minimal C library is also provided for reading MEDS files
 
 # python library
 
-The python library has a few external requirements.
+Instructions for installing and  using the python library are
+here: https://github.com/esheldon/meds/wiki
 
-* numpy
-* For reading the FITS files, the fitsio python package is used:   https://github.com/esheldon/fitsio
-* For making MEDS files, the WCS class in esutil is used, as are some numerical python utilities: https://github.com/esheldon/esutil.  esutil is not required for reading files.
-
-
-## installing the python library
-
-    in the usual place
-        python setup.py install
-
-    at a different prefix
-        python setup.py install --prefix=/some/path
-
-    make sure it is on your PYTHONPATH
+# C library
 
 ## examples for reading files
 ```python
