@@ -11,7 +11,7 @@ A minimal C library is also provided for reading MEDS files
 python library
 -----------------------------
 
-This python library with a few external requirements.
+The python library has a few external requirements.
 
 * numpy
 * For reading the FITS files, the fitsio python package is used.  fitsio https://github.com/esheldon/fitsio
