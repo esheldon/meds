@@ -7,7 +7,9 @@ library is also provided for reading MEDS files
 ## Documentation
 
 Full instructions for installing and using the python and C libraries are
-here: https://github.com/esheldon/meds/wiki
+here:
+
+https://github.com/esheldon/meds/wiki
 
 ### A few examples for reading files
 ```python
