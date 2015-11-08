@@ -8,8 +8,7 @@ Description of the file format here
 
 A minimal C library is also provided for reading MEDS files
 
-python library
------------------------------
+# python library
 
 The python library has a few external requirements.
 
@@ -18,8 +17,7 @@ The python library has a few external requirements.
 * For making MEDS files, the WCS class in esutil is used, as are some numerical python utilities: https://github.com/esheldon/esutil.  esutil is not required for reading files.
 
 
-installing the python library
-#############################
+## installing the python library
 
     in the usual place
         python setup.py install
@@ -29,8 +27,7 @@ installing the python library
 
     make sure it is on your PYTHONPATH
 
-examples
-########
+## examples for reading files
 ```python
 
 import meds
