@@ -590,7 +590,7 @@ class MEDSMaker(dict):
         # get ccd center
         row_ccd = np.array([nrow/2.0])
         col_ccd = np.array([ncol/2.0])
-        pos_ccd = make_wcs_positions(rows_ccd, cols_ccd, wcs.position_offset, inverse=True)
+        pos_ccd = make_wcs_positions(row_ccd, col_ccd, wcs.position_offset, inverse=True)
         ra_ccd,dec_ccd = wcs.image2sky(pos_ccd['wcs_col'], pos_ccd['wcs_row'])
         
         # get u,v - ccd is at 0,0 by def
