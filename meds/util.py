@@ -103,7 +103,7 @@ def get_meds_output_dtype(ncutout_max, extra_fields=None):
         ('orig_start_row', 'i8', (ncutout_max,)),
         ('orig_start_col', 'i8', (ncutout_max,)),
         ('cutout_row', 'f8', (ncutout_max,)),
-        ('cutout_col', 'f8', (ncutout_max,))
+        ('cutout_col', 'f8', (ncutout_max,)),
         ('dudrow', 'f8', (ncutout_max,)),
         ('dudcol', 'f8', (ncutout_max,)),
         ('dvdrow', 'f8', (ncutout_max,)),
