@@ -1,7 +1,7 @@
 default_config = {
     # buffer bounds for first cull of objects not on chip
-    # in degrees
-    'bounds_buffer_radec': 0.25/60.0,
+    # in arcsec
+    'bounds_buffer_uv': 16.0,
 
     # allowed values in the bitmask image
     'bitmask_allowed': 0,

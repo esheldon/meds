@@ -103,7 +103,7 @@ def get_meds_output_dtype(ncutout_max, extra_fields=None):
         ('orig_start_row', 'i8', (ncutout_max,)),
         ('orig_start_col', 'i8', (ncutout_max,)),
         ('cutout_row', 'f8', (ncutout_max,)),
-        ('cutout_col', 'f8', (ncutout_max,))
+        ('cutout_col', 'f8', (ncutout_max,)),
         ('dudrow', 'f8', (ncutout_max,)),
         ('dudcol', 'f8', (ncutout_max,)),
         ('dvdrow', 'f8', (ncutout_max,)),
@@ -239,7 +239,7 @@ def make_wcs_positions(row, col, offset, inverse=False):
 def radec_to_uv(ra,dec,ra_cen,dec_cen):
     rhat_cen,uhat_cen,vhat_cen = radec_to_unitvecs_ruv(ra_cen,dec_cen)
     rhat,uhat,vhat = radec_to_unitvecs_ruv(ra,dec)
-    cosang = numpy.dot(rhat_cen,rhat)
+    cosang = numpy.dot(rhat,rhat_cen)
     u = numpy.dot(rhat,uhat_cen)/cosang/numpy.pi*180.0*60.0*60.0 # arcsec
     v = numpy.dot(rhat,vhat_cen)/cosang/numpy.pi*180.0*60.0*60.0 # arcsec
     return u,v
@@ -257,8 +257,8 @@ def thetaphi_to_unitvecs_ruv(theta,phi):
     sinp = numpy.sin(phi)
     cosp = numpy.cos(phi)
 
-    rhat = numpy.array([sint*cosp,sint*sinp,cost])
-    that = numpy.array([cost*cosp,cost*sinp,-1.0*sint])
-    phat = numpy.array([-1.0*sinp,cosp,0.0])
+    rhat = numpy.array([sint*cosp,sint*sinp,cost]).T
+    that = numpy.array([cost*cosp,cost*sinp,-1.0*sint]).T
+    phat = numpy.array([-1.0*sinp,cosp,0.0]).T
 
     return rhat,phat,-1.0*that

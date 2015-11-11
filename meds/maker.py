@@ -588,10 +588,10 @@ class MEDSMaker(dict):
         ra,dec = wcs.image2sky(pos['wcs_col'], pos['wcs_row'])
 
         # get ccd center
-        row_ccd = np.array([nrow/2.0])
-        col_ccd = np.array([ncol/2.0])
+        row_ccd = nrow/2.0
+        col_ccd = ncol/2.0
         pos_ccd = make_wcs_positions(row_ccd, col_ccd, wcs.position_offset, inverse=True)
-        ra_ccd,dec_ccd = wcs.image2sky(pos_ccd['wcs_col'], pos_ccd['wcs_row'])
+        ra_ccd,dec_ccd = wcs.image2sky(pos_ccd['wcs_col'][0], pos_ccd['wcs_row'][0])
         
         # get u,v - ccd is at 0,0 by def
         u,v = radec_to_uv(ra,dec,ra_ccd,dec_ccd)
