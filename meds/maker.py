@@ -553,12 +553,51 @@ class MEDSMaker(dict):
 
         return q
 
-    def _get_rough_sky_bounds(self, wcs):
+    def _get_rough_sky_bounds(self, wcs, order=4):
         """
         rough sky bounds for precut
+        
+        wcs: is the wcs object that defines the transformation
+        order: order of grid to use in small direction to construct 
+            bounding box in ra-dec
+        
+        algorithm due to M. Jarvis w/ some changes from M. R. Becker
         """
         ncol, nrow = wcs.get_naxis()
-
+        
+        # set order so that pixels are square-ish
+        if ncol < nrow:
+            order_col = order
+            order_row = numpy.ceil(float(nrow)/float(ncol))
+        else:
+            order_row = order
+            order_col = numpy.ceil(float(ncol)/float(nrow))
+        
+        # construct a grid - trying to be pythonic, 
+        #  but a double loop would be clearer
+        rows = numpy.arange(order_row+1)*(nrow-1.0)/order_row
+        cols = numpy.arange(order_col+1)*(ncol-1.0)/order_col
+        rows,cols = numpy.meshgrid(rows,cols)
+        rows = rows.ravel()
+        cols = cols.ravel()
+        
+        # get ra,dec
+        pos = make_wcs_positions(rows, cols, wcs.position_offset, inverse=True)
+        ra,dec = wcs.image2sky(pos['wcs_col'], pos['wcs_row'])
+        
+        # build bounds with buffer and cos(dec) factors
+        decrad = numpy.deg2rad(dec)
+        rafac  = numpy.cos(decrad).min()
+        
+        rabuff  = self['bounds_buffer_radec']/rafac
+        decbuff = self['bounds_buffer_radec']
+        sky_bnds = Bounds(ra.min()  - rabuff,
+                          ra.max()  + rabuff,
+                          dec.min() - decbuff,
+                          dec.max() + decbuff)
+        
+        """
+        OLD CODE - keeping here for now
         # corners in default coord. system
         rows = numpy.array([0.0,    0.0, nrow-1, nrow-1])
         cols = numpy.array([0.0, ncol-1,    0.0, ncol-1])
@@ -575,6 +614,8 @@ class MEDSMaker(dict):
                           ra.max()  + rabuff,
                           dec.min() - decbuff,
                           dec.max() + decbuff)
+        """
+        
         return sky_bnds
 
     def _get_image_bounds(self, wcs):
