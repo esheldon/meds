@@ -22,7 +22,8 @@ from .util import \
         make_wcs_positions, \
         get_meds_output_struct, \
         get_meds_input_struct, \
-        get_image_info_struct
+        get_image_info_struct, \
+        radec_to_uv
 
 from .bounds import Bounds
 from .defaults import default_config
@@ -546,9 +547,10 @@ class MEDSMaker(dict):
         rough sky bounds cut
         """
 
-        sky_bnds = self._get_rough_sky_bounds(wcs)
+        sky_bnds,ra_ccd,dec_ccd = self._get_rough_sky_bounds(wcs)
+        u,v = radec_to_uv(ra,dec,ra_ccd,dec_ccd)
 
-        in_sky_bnds = sky_bnds.contains_points(ra, dec)
+        in_sky_bnds = sky_bnds.contains_points(u, v)
         q, = numpy.where(in_sky_bnds == True)
 
         return q
@@ -564,7 +566,7 @@ class MEDSMaker(dict):
         algorithm due to M. Jarvis w/ some changes from M. R. Becker
         """
         ncol, nrow = wcs.get_naxis()
-        
+
         # set order so that pixels are square-ish
         if ncol < nrow:
             order_col = order
@@ -572,7 +574,7 @@ class MEDSMaker(dict):
         else:
             order_row = order
             order_col = numpy.ceil(float(ncol)/float(nrow))
-        
+
         # construct a grid - trying to be pythonic, 
         #  but a double loop would be clearer
         rows = numpy.arange(order_row+1)*(nrow-1.0)/order_row
@@ -580,22 +582,31 @@ class MEDSMaker(dict):
         rows,cols = numpy.meshgrid(rows,cols)
         rows = rows.ravel()
         cols = cols.ravel()
-        
+
         # get ra,dec
         pos = make_wcs_positions(rows, cols, wcs.position_offset, inverse=True)
         ra,dec = wcs.image2sky(pos['wcs_col'], pos['wcs_row'])
+
+        # get ccd center
+        row_ccd = np.array([nrow/2.0])
+        col_ccd = np.array([ncol/2.0])
+        pos_ccd = make_wcs_positions(rows_ccd, cols_ccd, wcs.position_offset, inverse=True)
+        ra_ccd,dec_ccd = wcs.image2sky(pos_ccd['wcs_col'], pos_ccd['wcs_row'])
         
+        # get u,v - ccd is at 0,0 by def
+        u,v = radec_to_uv(ra,dec,ra_ccd,dec_ccd)
+
         # build bounds with buffer and cos(dec) factors
-        decrad = numpy.deg2rad(dec)
-        rafac  = numpy.cos(decrad).min()
-        
-        rabuff  = self['bounds_buffer_radec']/rafac
-        decbuff = self['bounds_buffer_radec']
-        sky_bnds = Bounds(ra.min()  - rabuff,
-                          ra.max()  + rabuff,
-                          dec.min() - decbuff,
-                          dec.max() + decbuff)
-        
+        vrad = numpy.deg2rad(v/3600.0) # arcsec to degrees
+        ufac  = numpy.cos(vrad).min()
+
+        ubuff  = self['bounds_buffer_uv']/ufac
+        vbuff = self['bounds_buffer_uv']
+        sky_bnds = Bounds(u.min()  - ubuff,
+                          u.max()  + ubuff,
+                          v.min() - vbuff,
+                          v.max() + vbuff)
+
         """
         OLD CODE - keeping here for now
         # corners in default coord. system
@@ -615,8 +626,8 @@ class MEDSMaker(dict):
                           dec.min() - decbuff,
                           dec.max() + decbuff)
         """
-        
-        return sky_bnds
+
+        return sky_bnds,ra_ccd,dec_ccd
 
     def _get_image_bounds(self, wcs):
         """
