@@ -62,7 +62,7 @@ class MEDSMaker(dict):
 
         # make copies since we may alter some things
         self.image_info = image_info.copy()
-        self.meta_data=copy.deepcopy(meta_data)
+        self._set_meta_data(meta_data)
         self._set_obj_data(obj_data)
 
         self._force_box_sizes_even()
@@ -682,6 +682,40 @@ class MEDSMaker(dict):
 
         self['cutout_types'] = cutout_types
         print('writing cutouts for:',cutout_types)
+
+    def _set_meta_data(self, meta_data_in):
+        """
+        add some fields to the input metadata for software versions
+        """
+        version_fmt = 'S20'
+        numpy_version=numpy.__version__
+        esutil_version=eu.__version__
+        fitsio_version=fitsio.__version__
+
+        if meta_data_in is not None:
+            mnames=meta_data_in.dtype.names
+            mdt = copy.deepcopy( meta_data_in.dtype.descr )
+            nmeta=meta_data_in.size
+        else:
+            mnames=[]
+            mdt = []
+            nmeta=1
+
+        for n in ['numpy','esutil','fitsio']:
+            vname = '%s_version' % n
+            if vname not in mnames:
+                mdt += [(vname,version_fmt)]
+
+        meta_data = zeros(nmeta, dtype=mdt)
+
+        if meta_data_in is not None:
+            eu.numpy_util.copy_fields(meta_data_in, meta_data)
+
+        meta_data['numpy_version'] = numpy_version
+        meta_data['esutil_version'] = esutil_version
+        meta_data['fitsio_version'] = fitsio_version
+
+        self.meta_data=meta_data
 
     def _set_obj_data(self, obj_data):
         """
