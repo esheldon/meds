@@ -110,6 +110,10 @@ class MEDSExtractor(object):
                     outfits.write(seg_cutouts, extname='seg_cutouts')
                     del seg_cutouts
 
+                    bmask_cutouts=infits['bmask_cutouts'][cstart:cend]
+                    outfits.write(bmask_cutouts, extname='bmask_cutouts')
+                    del bmask_cutouts
+
     def _write_dummy(self, outfits):
         print 'no objects with cutouts, writing dummy data'
         dummy=numpy.zeros(2, dtype='f4') + -9999
@@ -118,6 +122,8 @@ class MEDSExtractor(object):
         outfits.write(dummy, extname='weight_cutouts')
         dummy=numpy.zeros(2, dtype='i4') + -9999
         outfits.write(dummy, extname='seg_cutouts')
+        dummy=numpy.zeros(2, dtype='i4') + -9999
+        outfits.write(dummy, extname='bmask_cutouts')
 
     def _get_row_range(self, data):
         """
