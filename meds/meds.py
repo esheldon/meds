@@ -274,6 +274,35 @@ class MEDS(object):
         box_size=self._cat['box_size'][iobj]
         return split_mosaic(mosaic)
 
+    def get_psf(self, iobj, icutout):
+        """
+        Get a single psf image for the indicated entry
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        icutout:
+            Index of the cutout for this object.
+
+        returns
+        -------
+        The psf image
+        """
+
+        if 'psf' not in self._fits:
+            raise RuntimeError("this MEDS file has not 'psf' extension")
+
+        self._check_indices(iobj, icutout=icutout)
+
+        box_size=self._cat['psf_box_size'][iobj]
+        start_row = self._cat['psf_start_row'][iobj,icutout]
+        row_end = start_row + box_size*box_size
+
+        imflat = self._fits['psf'][start_row:row_end]
+        im = imflat.reshape(box_size,box_size)
+        return im
+
     def get_cweight_cutout(self, iobj, icutout):
         """
         Composite the weight and seg maps, interpolating seg map from the coadd
