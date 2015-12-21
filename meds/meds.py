@@ -291,7 +291,7 @@ class MEDS(object):
         """
 
         if 'psf' not in self._fits:
-            raise RuntimeError("this MEDS file has not 'psf' extension")
+            raise RuntimeError("this MEDS file has no 'psf' extension")
 
         self._check_indices(iobj, icutout=icutout)
 
