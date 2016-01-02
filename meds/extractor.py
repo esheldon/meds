@@ -110,9 +110,10 @@ class MEDSExtractor(object):
                     outfits.write(seg_cutouts, extname='seg_cutouts')
                     del seg_cutouts
 
-                    bmask_cutouts=infits['bmask_cutouts'][cstart:cend]
-                    outfits.write(bmask_cutouts, extname='bmask_cutouts')
-                    del bmask_cutouts
+                    if 'bmask_cutouts' in infits:
+                        bmask_cutouts=infits['bmask_cutouts'][cstart:cend]
+                        outfits.write(bmask_cutouts, extname='bmask_cutouts')
+                        del bmask_cutouts
 
     def _write_dummy(self, outfits):
         print 'no objects with cutouts, writing dummy data'
