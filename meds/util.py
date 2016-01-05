@@ -6,6 +6,77 @@ import tempfile
 DEFVAL = -9999
 IMAGE_INFO_TYPES = ['image','weight','seg','bmask','bkg']
 
+def validate_meds(filename):
+    """
+    validate the input MEDS file
+
+    parameters
+    ----------
+    filename: string
+        Path to a MEDS file
+
+    method
+    ------
+    Required extensions are checked.  Existence of columns in required
+    binary tables is also checked.
+    """
+    from .meds import MEDS
+
+    m=MEDS(filename)
+
+    fits=m._fits
+
+    print("checking for required extensions")
+    required_ext=['object_data','image_info','image_cutouts']
+
+    nbad=0
+    for re in required_ext:
+        mess="    required extension named '%s' was not found" % re
+        if re not in fits:
+            print(mess)
+            nbad += 1
+    if nbad != 0:
+        print("    %d were missing" % nbad)
+    else:
+        print("    OK")
+
+    print()
+    print("checking for required object_data columns")
+    dt = numpy.dtype( get_meds_output_dtype(10) )
+    names = dt.names
+    onames = fits['object_data'].get_colnames()
+
+    nbad=0
+    for n in names:
+        mess="    required object_data field named '%s' was not found" % n
+        if n not in onames:
+            print(mess)
+            nbad += 1
+
+    if nbad != 0:
+        print("    %d were missing" % nbad)
+    else:
+        print("    OK")
+
+    print()
+    print("checking for required image_info columns")
+    dt = numpy.dtype(get_image_info_dtype(10))
+    names = dt.names
+    inames = fits['image_info'].get_colnames()
+
+    nbad=0
+    for n in names:
+        mess="    required image_info field named '%s' was not found" % n
+        if n not in inames:
+            print(mess)
+            nbad += 1
+
+    if nbad != 0:
+        print("    %d were missing" % nbad)
+    else:
+        print("    OK")
+
+
 def get_meds_output_struct(nobj, ncutout_max, extra_fields=None):
     """
     get the object_data structure, putting in default
