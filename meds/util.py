@@ -45,12 +45,12 @@ def validate_meds(filename):
     print("checking for required object_data columns")
     dt = numpy.dtype( get_meds_output_dtype(10) )
     names = dt.names
-    onames = fits['object_data'].get_colnames()
+    onames = [c.lower() for c in fits['object_data'].get_colnames()]
 
     nbad=0
     for n in names:
         mess="    required object_data field named '%s' was not found" % n
-        if n not in onames:
+        if n.lower() not in onames:
             print(mess)
             nbad += 1
 
@@ -62,8 +62,6 @@ def validate_meds(filename):
     # require only a subset
     print()
     print("checking for required image_info columns")
-    dt = numpy.dtype(get_image_info_dtype(10))
-    #names = dt.names
     names=[
         'image_path',
         'image_ext',
@@ -72,7 +70,7 @@ def validate_meds(filename):
         'magzp',
         'scale',
     ]
-    inames = fits['image_info'].get_colnames()
+    inames = [c.lower() for c in fits['image_info'].get_colnames()]
 
     nbad=0
     for n in names:
