@@ -36,7 +36,7 @@ def validate_meds(filename):
             print(mess)
             nbad += 1
     if nbad != 0:
-        print("    %d were missing" % nbad)
+        print("    %d/%d were missing" % (nbad,len(required_ext)))
     else:
         print("    OK")
 
@@ -54,7 +54,7 @@ def validate_meds(filename):
             nbad += 1
 
     if nbad != 0:
-        print("    %d were missing" % nbad)
+        print("    %d/%d were missing" % (nbad,len(names)))
     else:
         print("    OK")
 
@@ -72,7 +72,7 @@ def validate_meds(filename):
             nbad += 1
 
     if nbad != 0:
-        print("    %d were missing" % nbad)
+        print("    %d/%d were missing" % (nbad,len(names)))
     else:
         print("    OK")
 
