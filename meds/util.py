@@ -40,6 +40,7 @@ def validate_meds(filename):
     else:
         print("    OK")
 
+    # require all fields
     print()
     print("checking for required object_data columns")
     dt = numpy.dtype( get_meds_output_dtype(10) )
@@ -58,10 +59,19 @@ def validate_meds(filename):
     else:
         print("    OK")
 
+    # require only a subset
     print()
     print("checking for required image_info columns")
     dt = numpy.dtype(get_image_info_dtype(10))
-    names = dt.names
+    #names = dt.names
+    names=[
+        'image_path',
+        'image_ext',
+        'image_id',
+        'image_flags',
+        'magzp',
+        'scale',
+    ]
     inames = fits['image_info'].get_colnames()
 
     nbad=0
