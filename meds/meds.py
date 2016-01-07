@@ -299,7 +299,6 @@ class MEDS(object):
         start_row = self._cat['psf_start_row'][iobj,icutout]
         row_end = start_row + box_size*box_size
 
-        print("start_row:",start_row,"end_row:",row_end)
         imflat = self._fits['psf'][start_row:row_end]
         im = imflat.reshape(box_size,box_size)
         return im
