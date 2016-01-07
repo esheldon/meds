@@ -115,6 +115,12 @@ class MEDSExtractor(object):
                         outfits.write(bmask_cutouts, extname='bmask_cutouts')
                         del bmask_cutouts
 
+                    if 'psf' in infits:
+                        psfs=infits['psf'][cstart:cend]
+                        outfits.write(psfs, extname='psf')
+                        del psfs
+
+
     def _write_dummy(self, outfits):
         print 'no objects with cutouts, writing dummy data'
         dummy=numpy.zeros(2, dtype='f4') + -9999
