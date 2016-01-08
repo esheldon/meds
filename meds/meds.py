@@ -802,11 +802,12 @@ class MEDS(object):
             crow = crow.round().astype('i8')
             ccol = ccol.round().astype('i8')
 
+            '''
             wbad=numpy.where(   (crow < 0) | (crow >= coadd_seg.shape[0])
                               & (ccol < 0) | (ccol >= coadd_seg.shape[1]) )
             if wbad[0].size != 0:
                 cim[wbad] = 0
-
+            '''
             # clipping makes the notation easier
             crow = crow.clip(0,coadd_seg.shape[0]-1)
             ccol = ccol.clip(0,coadd_seg.shape[1]-1)
