@@ -6,6 +6,12 @@ import tempfile
 DEFVAL = -9999
 IMAGE_INFO_TYPES = ['image','weight','seg','bmask','bkg']
 
+class MEDSCreationError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 def validate_meds(filename):
     """
     validate the input MEDS file
