@@ -407,7 +407,11 @@ class MEDSMaker(dict):
             in_bnds = bnds.contains_points(pos['zrow'], pos['zcol'])
             q_rc, = numpy.where(in_bnds == True)
             print('    second cut: %6d of %6d objects' % (len(q_rc),len(q)))
-
+            
+            if file_id == 0:
+                assert len(obj_data['ra']) == len(q_rc), \
+                    'Not all objects were found in first image for MEDS making (which is the coadd/detection image by convention).')
+            
             # compose them
             q = q[q_rc]
 
@@ -537,7 +541,6 @@ class MEDSMaker(dict):
         with both wcs positions and zero offset positions
         """
         col,row = wcs.sky2image(ra,dec)
-
         positions = make_wcs_positions(row, col, wcs.position_offset)
         return positions
 
