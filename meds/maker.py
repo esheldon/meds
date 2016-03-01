@@ -410,7 +410,7 @@ class MEDSMaker(dict):
             
             if file_id == 0:
                 assert len(obj_data['ra']) == len(q_rc), \
-                    'Not all objects were found in first image for MEDS making (which is the coadd/detection image by convention).')
+                    'Not all objects were found in first image for MEDS making (which is the coadd/detection image by convention).'
             
             # compose them
             q = q[q_rc]
