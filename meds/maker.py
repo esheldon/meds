@@ -405,10 +405,56 @@ class MEDSMaker(dict):
             # now test if in the actual image space.  Bounds are created
             # in the offset coords
             bnds = self._get_image_bounds(wcs)
+            
+            # for coadds add buffer if requested
+            if file_id == 0:
+                bnds.rowmin -= self['coadd_bounds_buffer_rowcol']
+                bnds.rowmax += self['coadd_bounds_buffer_rowcol']
+                bnds.colmin -= self['coadd_bounds_buffer_rowcol']
+                bnds.colmax += self['coadd_bounds_buffer_rowcol']
+                
+            # do the test
             in_bnds = bnds.contains_points(pos['zrow'], pos['zcol'])
             q_rc, = numpy.where(in_bnds == True)
             print('    second cut: %6d of %6d objects' % (len(q_rc),len(q)))
             
+            # for coadds remove the buffer
+            if file_id == 0:
+                bnds.rowmin += self['coadd_bounds_buffer_rowcol']
+                bnds.rowmax -= self['coadd_bounds_buffer_rowcol']
+                bnds.colmin += self['coadd_bounds_buffer_rowcol']
+                bnds.colmax -= self['coadd_bounds_buffer_rowcol']
+                
+            # force into the image if requested
+            if file_id == 0 and self['force_into_coadd_bounds']:
+                # for debugging
+                print("    pre-forced obj row range (min, max - image row max):  % e % e" \
+                          % (numpy.min(pos['zrow'][q_rc]),numpy.max(pos['zrow'][q_rc]-bnds.rowmax)))
+                print("    pre-forced obj col range (min, max - image col max):  % e % e" \
+                          % (numpy.min(pos['zcol'][q_rc]),numpy.max(pos['zcol'][q_rc]-bnds.colmax)))
+                
+                rn = numpy.clip(pos['zrow'][q_rc], bnds.rowmin, bnds.rowmax)
+                cn = numpy.clip(pos['zcol'][q_rc], bnds.rowmin, bnds.rowmax)
+                num_forced = len(numpy.where((rn != pos['zrow'][q_rc]) | (cn != pos['zcol'][q_rc]))[0])
+                pos['zrow'][q_rc] = rn
+                pos['zcol'][q_rc] = cn
+                del rn
+                del cn
+                
+                # for debugging
+                print("    post-forced obj row range (min, max - image row max): % e % e" \
+                          % (numpy.min(pos['zrow'][q_rc]),numpy.max(pos['zrow'][q_rc]-bnds.rowmax)))
+                print("    post-forced obj col range (min, max - image col max): % e % e" \
+                          % (numpy.min(pos['zcol'][q_rc]),numpy.max(pos['zcol'][q_rc]-bnds.colmax)))
+                print("    # of objects forced into coadd: %d" % num_forced)
+                
+                # make sure stuff that is forced made it
+                in_in_bnds = bnds.contains_points(pos['zrow'][q_rc], pos['zcol'][q_rc])
+                if not numpy.all(in_in_bnds):
+                    raise MEDSCreationError('Not all objects were found in first image for\
+ MEDS making (which is the coadd/detection image by convention) after being forced into its bounds.')
+                    
+            # now make sure everything is there
             if file_id == 0 and len(obj_data['ra']) != len(q_rc):
                 raise MEDSCreationError('Not all objects were found in first image for\
  MEDS making (which is the coadd/detection image by convention).')
