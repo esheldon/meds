@@ -274,7 +274,7 @@ class MEDS(object):
         box_size=self._cat['box_size'][iobj]
         return split_mosaic(mosaic)
 
-    def get_cweight_cutout(self, iobj, icutout):
+    def get_cweight_cutout(self, iobj, icutout, segid_from_number=False):
         """
         Composite the weight and seg maps, interpolating seg map from the coadd
 
@@ -286,6 +286,8 @@ class MEDS(object):
             Index of the object
         icutout:
             Index of cutout
+        segid_from_number:
+            If True, use get_number() to get the segid.
 
         returns
         -------
@@ -293,7 +295,7 @@ class MEDS(object):
         """
         wt=self.get_cutout(iobj, icutout, type='weight')
         coadd_seg=self.get_cutout(iobj, 0, type='seg')
-        cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg)
+        cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg, segid_from_number=segid_from_number)
         return cwt
 
     def get_cweight_mosaic(self, iobj):
@@ -350,7 +352,7 @@ class MEDS(object):
         wlist = split_mosaic(wtmosaic)
         return wlist
 
-    def get_cweight_cutout_nearest(self, iobj, icutout, fast=True):
+    def get_cweight_cutout_nearest(self, iobj, icutout, fast=True, segid_from_number=False):
         """
         get the cweight map and zero out pixels not nearest to central object
 
@@ -368,7 +370,7 @@ class MEDS(object):
         Adapted from Niall Maccrann and Joe Zuntz
         """
 
-        weight = self.get_cweight_cutout(iobj, icutout)
+        weight = self.get_cweight_cutout(iobj, icutout, segid_from_number=segid_from_number)
         seg    = self.interpolate_coadd_seg(iobj, icutout)
 
         #if only have sky and object, then just return
@@ -526,7 +528,6 @@ class MEDS(object):
             return coadd_seg
 
         seg = 0*coadd_seg.copy()
-
 
         se_jacob=self.get_jacobian_matrix(iobj, icutout)
         coadd_jacob=self.get_jacobian_matrix(iobj, 0)
@@ -724,7 +725,7 @@ class MEDS(object):
         else:
             return self._cat['number'][iobj]
 
-    def _make_composite_image(self, iobj, icutout, im, coadd_seg):
+    def _make_composite_image(self, iobj, icutout, im, coadd_seg, segid_from_number=False):
         """
         Internal routine to composite the coadd seg onto another image,
         meaning set zero outside the region
@@ -740,7 +741,10 @@ class MEDS(object):
         rowcen=self['cutout_row'][iobj,icutout]
         colcen=self['cutout_col'][iobj,icutout]
 
-        segid=coadd_seg[coadd_rowcen,coadd_colcen]
+        if not segid_from_number:
+            segid=coadd_seg[coadd_rowcen,coadd_colcen]
+        else:
+            segid=self.get_number(iobj)
 
         if icutout==0:
             # this cutout is the coadd
