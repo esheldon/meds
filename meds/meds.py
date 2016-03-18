@@ -298,7 +298,7 @@ class MEDS(object):
         cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg, segid_from_number=segid_from_number)
         return cwt
 
-    def get_cweight_mosaic(self, iobj):
+    def get_cweight_mosaic(self, iobj, segid_from_number=False):
         """
         Composite the weight and seg maps, interpolating seg map from the coadd
 
@@ -323,12 +323,12 @@ class MEDS(object):
         wlist = split_mosaic(wtmosaic)
 
         for icutout,wt in enumerate(wlist):
-            cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg)
+            cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg, segid_from_number=segid_from_number)
             wt[:,:] = cwt[:,:]
 
         return wtmosaic
 
-    def get_cweight_cutout_list(self, iobj):
+    def get_cweight_cutout_list(self, iobj, segid_from_number=False):
         """
         Composite the weight and seg maps, interpolating seg map from the coadd
 
@@ -343,7 +343,7 @@ class MEDS(object):
         -------
         A list containing all weight maps
         """
-        wtmosaic=self.get_cweight_mosaic(iobj)
+        wtmosaic=self.get_cweight_mosaic(iobj,segid_from_number=segid_from_number)
 
         ncutout=self._cat['ncutout'][iobj]
         box_size=self._cat['box_size'][iobj]
