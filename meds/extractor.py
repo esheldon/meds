@@ -186,7 +186,7 @@ class MEDSExtractor(object):
             raise ValueError("output file name equals input")
 
         if self.start > self.end:
-            raise ValueError("found start > end: %d %d" % (start,end) )
+            raise ValueError("found start > end: %d %d" % (self.start,self.end) )
 
 
 class MEDSCatalogExtractor(object):
