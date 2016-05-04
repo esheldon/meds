@@ -1,3 +1,15 @@
+BMASK_EDGE=2**30
+
+# default values in each image type.  If the
+# cutout crosses an edge the value will get
+# filled in with this number
+default_values = {
+    'image':0.0,
+    'weight':0.0,
+    'seg':0,
+    'bmask':BMASK_EDGE,
+}
+
 default_config = {
     # buffer bounds for first cull of objects not on chip
     # in arcsec
@@ -7,7 +19,7 @@ default_config = {
     # objects within the coadd image bounds plus this buffer are 
     # "in" the coadd image
     'coadd_bounds_buffer_rowcol': 1e-3,
-    
+
     # objects within 'coadd_bounds_buffer_rowcol' buffer around 
     # the bounds of the coadd are forced to be at the edge of 
     # the chip if 'force_into_coadd_bounds' is True    
