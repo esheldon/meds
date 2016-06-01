@@ -146,14 +146,28 @@ class MEDSMaker(dict):
 
         dims=[self.total_pixels]
 
+        if 'fpack_pars' in self:
+            header=self['fpack_pars']
+        else:
+            header=None
+
         for type in self['cutout_types']:
             print('    reserving %s mosaic' % type)
             extname=self['%s_cutout_extname' % type]
             dtype=self['%s_dtype' % type]
-            fits.create_image_hdu(img=None,
-                                  dtype=dtype,
-                                  dims=dims,
-                                  extname=extname)
+
+            # this reserves space for the images and header,
+            # but no data is written
+            fits.create_image_hdu(
+                img=None,
+                dtype=dtype,
+                dims=dims,
+                extname=extname,
+                header=header,
+            )
+
+            # now need to write the header
+            fits[extname].write_keys(header, clean=False)
 
     def _write_cutouts(self, cutout_type):
         """
