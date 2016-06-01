@@ -201,7 +201,7 @@ def get_meds_output_dtype(ncutout_max, extra_fields=None):
     return dtype
 
 
-def get_image_info_struct(nimage, path_len, wcs_len=None):
+def get_image_info_struct(nimage, path_len, wcs_len=None, ext_len=None):
     """
     get the image info structure
 
@@ -217,8 +217,11 @@ def get_image_info_struct(nimage, path_len, wcs_len=None):
     wcs_len: int, optional
         length of wcs strings. If not sent, wcs will not
         be present in the array
+    ext_len: int, optional
+        If sent, the extension is assumed to be a string
+        instead of an integer, and this is the length
     """
-    dt = get_image_info_dtype(path_len, wcs_len=wcs_len)
+    dt = get_image_info_dtype(path_len, wcs_len=wcs_len, ext_len=ext_len)
 
     data = numpy.zeros(nimage, dtype=dt)
 
@@ -226,7 +229,7 @@ def get_image_info_struct(nimage, path_len, wcs_len=None):
 
     return data
 
-def get_image_info_dtype(path_len, wcs_len=None):
+def get_image_info_dtype(path_len, wcs_len=None, ext_len=None):
     """
     get the image_info dtype for the specified path string
     length and wcs string length
@@ -238,10 +241,17 @@ def get_image_info_dtype(path_len, wcs_len=None):
     wcs_len: int, optional
         length of wcs strings. If not sent, wcs will not
         be present in data type
+    ext_len: int, optional
+        If sent, the extension is assumed to be a string
+        instead of an integer, and this is the length
     """
 
     path_fmt = 'S%d' % path_len
 
+    if ext_len is not None:
+        ext_descr = 'S%d' % ext_len
+    else:
+        ext_descr = 'i2'
     dt=[]
     for ctype in IMAGE_INFO_TYPES:
         path_name = '%s_path' % ctype
@@ -249,7 +259,7 @@ def get_image_info_dtype(path_len, wcs_len=None):
 
         dt += [
             (path_name, path_fmt),
-            (ext_name,'i2'),
+            (ext_name,ext_descr),
         ]
 
     dt += [
