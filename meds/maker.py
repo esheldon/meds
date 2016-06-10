@@ -508,11 +508,10 @@ class MEDSMaker(dict):
             obj_data['orig_row'][q,icut] = qrow
             obj_data['orig_col'][q,icut] = qcol
 
-            #ostart_row = numpy.floor(qrow) - half_box_size[q]
-            #ostart_col = numpy.floor(qcol) - half_box_size[q]
-            # to be consistent with the C++ code
-            ostart_row = qrow.astype('i4') - half_box_size[q]
-            ostart_col = qcol.astype('i4') - half_box_size[q]
+            # this results in the object center being close to
+            # the natural center (dim-1.)/2.
+            ostart_row = qrow.astype('i4') - half_box_size[q] + 1
+            ostart_col = qcol.astype('i4') - half_box_size[q] + 1
             crow       = qrow - ostart_row
             ccol       = qcol - ostart_col
 
