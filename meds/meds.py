@@ -308,7 +308,7 @@ class MEDS(object):
         ----------
         iobj:
             Index of the object
-
+        segid_from_number:                                                                                                                                               If True, use get_number() to get the segid.                                                              
         returns
         -------
         A composite of all weight maps
@@ -338,7 +338,8 @@ class MEDS(object):
         ----------
         iobj:
             Index of the object
-
+        segid_from_number:                                                                                                                                  
+            If True, use get_number() to get the segid.                                                             
         returns
         -------
         A list containing all weight maps
@@ -362,6 +363,8 @@ class MEDS(object):
             Index of the object
         icutout:
             Index of cutout
+        segid_from_number:                                                                                                                                  
+            If True, use get_number() to get the segid.                                                             
 
         returns
         -------
