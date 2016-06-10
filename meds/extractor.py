@@ -81,6 +81,13 @@ class MEDSExtractor(object):
                     # adjust to new start.  If cstart==-1 will all be -9999
                     obj_data['start_row'] -= cstart
 
+                # psfs can have different dimensions
+                if 'psf' in infits:
+                    psf_cstart, psf_cend = self._get_psf_row_range(obj_data)
+                    if psf_cstart != -1:
+                        # adjust to new start.  If cstart==-1 will all be -9999
+                        obj_data['psf_start_row'] -= psf_cstart
+
                 outfits.write(obj_data, extname='object_data')
 
                 #
@@ -110,6 +117,17 @@ class MEDSExtractor(object):
                     outfits.write(seg_cutouts, extname='seg_cutouts')
                     del seg_cutouts
 
+                    if 'bmask_cutouts' in infits:
+                        bmask_cutouts=infits['bmask_cutouts'][cstart:cend]
+                        outfits.write(bmask_cutouts, extname='bmask_cutouts')
+                        del bmask_cutouts
+
+                    if 'psf' in infits:
+                        psfs=infits['psf'][psf_cstart:psf_cend]
+                        outfits.write(psfs, extname='psf')
+                        del psfs
+
+
     def _write_dummy(self, outfits):
         print 'no objects with cutouts, writing dummy data'
         dummy=numpy.zeros(2, dtype='f4') + -9999
@@ -118,6 +136,8 @@ class MEDSExtractor(object):
         outfits.write(dummy, extname='weight_cutouts')
         dummy=numpy.zeros(2, dtype='i4') + -9999
         outfits.write(dummy, extname='seg_cutouts')
+        dummy=numpy.zeros(2, dtype='i4') + -9999
+        outfits.write(dummy, extname='bmask_cutouts')
 
     def _get_row_range(self, data):
         """
@@ -137,13 +157,25 @@ class MEDSExtractor(object):
         npix_last = data['box_size'][ilast]**2
         cend     = data['start_row'][ilast,ncutout_last-1] + npix_last
 
-        """
-        cstart   = data['start_row'][0,0]
+        return cstart, cend
 
-        ncutout  = data['ncutout'][-1]
-        npix     = data['box_size'][-1]**2 * ncutout
-        cend     = data['start_row'][-1,ncutout-1] + npix
+    def _get_psf_row_range(self, data):
         """
+        get pixel range for this subset
+        """
+        w,=numpy.where( data['ncutout'] > 0)
+        if w.size==0:
+            return -1, -1
+
+
+        ifirst = w[0]
+        ilast  = w[-1]
+
+        cstart    = data['psf_start_row'][ifirst,0]
+
+        ncutout_last = data['ncutout'][ilast]
+        npix_last = data['psf_box_size'][ilast]**2
+        cend     = data['psf_start_row'][ilast,ncutout_last-1] + npix_last
 
         return cstart, cend
 
@@ -154,7 +186,7 @@ class MEDSExtractor(object):
             raise ValueError("output file name equals input")
 
         if self.start > self.end:
-            raise ValueError("found start > end: %d %d" % (start,end) )
+            raise ValueError("found start > end: %d %d" % (self.start,self.end) )
 
 
 class MEDSCatalogExtractor(object):

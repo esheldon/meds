@@ -1,5 +1,4 @@
-"""OA
-MEDSNumberExtractor
+"""MEDSNumberExtractor
     A class to extract a subset of the objects in a MEDS file
     and write to a new file using only the object numbers
 """
@@ -72,7 +71,7 @@ class MEDSNumberExtractor(object):
         """
         w,=numpy.where( data['ncutout'] > 0)
         if w.size==0:
-            return -1, -1
+            return [(-1, -1)]
 
         ranges = []
         start = True
@@ -159,6 +158,10 @@ class MEDSNumberExtractor(object):
                     outfits.write(seg_cutouts, extname='seg_cutouts')
                     del seg_cutouts
 
+                    bmask_cutouts = self._get_data_from_ranges(ranges, infits['bmask_cutouts'])
+                    outfits.write(bmask_cutouts, extname='bmask_cutouts')
+                    del bmask_cutouts
+
     def _write_dummy(self, outfits):
         print 'no objects with cutouts, writing dummy data'
         dummy=numpy.zeros(2, dtype='f4') + -9999
@@ -167,6 +170,8 @@ class MEDSNumberExtractor(object):
         outfits.write(dummy, extname='weight_cutouts')
         dummy=numpy.zeros(2, dtype='i4') + -9999
         outfits.write(dummy, extname='seg_cutouts')
+        dummy=numpy.zeros(2, dtype='i4') + -9999
+        outfits.write(dummy, extname='bmask_cutouts')
 
     def _check_inputs(self):
         if self.meds_file==self.sub_file:
