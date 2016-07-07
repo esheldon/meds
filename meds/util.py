@@ -201,7 +201,10 @@ def get_meds_output_dtype(ncutout_max, extra_fields=None):
     return dtype
 
 
-def get_image_info_struct(nimage, path_len, wcs_len=None, ext_len=None):
+def get_image_info_struct(nimage, path_len,
+                          image_id_len=None,
+                          wcs_len=None,
+                          ext_len=None):
     """
     get the image info structure
 
@@ -221,7 +224,12 @@ def get_image_info_struct(nimage, path_len, wcs_len=None, ext_len=None):
         If sent, the extension is assumed to be a string
         instead of an integer, and this is the length
     """
-    dt = get_image_info_dtype(path_len, wcs_len=wcs_len, ext_len=ext_len)
+    dt = get_image_info_dtype(
+        path_len,
+        image_id_len=image_id_len,
+        wcs_len=wcs_len,
+        ext_len=ext_len,
+    )
 
     data = numpy.zeros(nimage, dtype=dt)
 
@@ -229,7 +237,10 @@ def get_image_info_struct(nimage, path_len, wcs_len=None, ext_len=None):
 
     return data
 
-def get_image_info_dtype(path_len, wcs_len=None, ext_len=None):
+def get_image_info_dtype(path_len,
+                         image_id_len=None,
+                         wcs_len=None,
+                         ext_len=None):
     """
     get the image_info dtype for the specified path string
     length and wcs string length
@@ -248,6 +259,11 @@ def get_image_info_dtype(path_len, wcs_len=None, ext_len=None):
 
     path_fmt = 'S%d' % path_len
 
+    if image_id_len is None:
+        image_id_descr = 'i8'
+    else:
+        image_id_descr = 'S%d' % image_id_len
+
     if ext_len is not None:
         ext_descr = 'S%d' % ext_len
     else:
@@ -263,7 +279,7 @@ def get_image_info_dtype(path_len, wcs_len=None, ext_len=None):
         ]
 
     dt += [
-        ('image_id', 'i8'),
+        ('image_id', image_id_descr),
         ('image_flags', 'i8'),
         ('magzp', 'f4'),
         ('scale', 'f4'),
