@@ -189,20 +189,56 @@ static PyMethodDef methods[] = {
   {NULL}  /* Sentinel */
 };
 
+
+#if PY_MAJOR_VERSION >= 3
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "_uberseg",      /* m_name */
+        "Define c version of uberseg",  /* m_doc */
+        -1,                  /* m_size */
+        methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
+#endif
+
+
 #ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
 #endif
 PyMODINIT_FUNC
+#if PY_MAJOR_VERSION >= 3
+PyInit__uberseg(void) 
+#else
 init_uberseg(void) 
+#endif
 {
   PyObject* m = NULL;
 
-  m = Py_InitModule3("_uberseg", methods, "uberseg methods");
-  if(m == NULL) {
-    return;
-  }
   
+#if PY_MAJOR_VERSION >= 3
+    m = PyModule_Create(&moduledef);
+    if (m==NULL) {
+        return NULL;
+    }
+
+#else
+
+    m = Py_InitModule3("_uberseg", methods, "uberseg methods");
+    if(m == NULL) {
+      return;
+    }
+
+#endif
+
+
   import_array();
+
+#if PY_MAJOR_VERSION >= 3
+    return m;
+#endif
 }
 
 

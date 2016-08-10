@@ -769,7 +769,7 @@ class MEDS(object):
         rowcen=self['cutout_row'][iobj,icutout]
         colcen=self['cutout_col'][iobj,icutout]
 
-        segid=coadd_seg[coadd_rowcen,coadd_colcen]
+        segid=coadd_seg[int(coadd_rowcen),int(coadd_colcen)]
 
         if icutout==0:
             # this cutout is the coadd
@@ -868,7 +868,7 @@ def split_mosaic(mosaic):
     The images in the list share memory with the original.
     """
     box_size=mosaic.shape[1]
-    ncutout = mosaic.shape[0]/box_size
+    ncutout = mosaic.shape[0]//box_size
 
     imlist=[]
     for i in xrange(ncutout):
