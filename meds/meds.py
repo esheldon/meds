@@ -403,7 +403,7 @@ class MEDS(object):
         #if only have sky and object, then just return
         if len(numpy.unique(seg)) == 2:
             return weight
-        
+
         # First get all indices of all seg map pixels which contain an object
         # i.e. are not equal to zero
 
@@ -411,7 +411,7 @@ class MEDS(object):
 
         # the seg map holds the sextractor number, 1 offset
         object_number = self['number'][iobj]
-        
+
         if fast and _have_c_ubserseg:
             #call fast c code with tree
             Nx,Ny = seg.shape
