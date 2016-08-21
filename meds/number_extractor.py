@@ -2,6 +2,8 @@
     A class to extract a subset of the objects in a MEDS file
     and write to a new file using only the object numbers
 """
+from __future__ import print_function
+
 import os
 import fitsio
 import numpy
@@ -50,7 +52,7 @@ class MEDSNumberExtractor(object):
     def close(self):
         if self.cleanup:
             if os.path.exists(self.sub_file):
-                print 'removing sub file:',self.sub_file
+                print('removing sub file:',self.sub_file)
                 os.remove(self.sub_file)
 
     def _get_inds(self, data):
@@ -111,7 +113,7 @@ class MEDSNumberExtractor(object):
     def _extract(self):
         
         with fitsio.FITS(self.meds_file) as infits:
-            print 'opening sub file:',self.sub_file
+            print('opening sub file:',self.sub_file)
             with fitsio.FITS(self.sub_file,'rw',clobber=True) as outfits:
 
                 #
@@ -163,7 +165,7 @@ class MEDSNumberExtractor(object):
                     del bmask_cutouts
 
     def _write_dummy(self, outfits):
-        print 'no objects with cutouts, writing dummy data'
+        print('no objects with cutouts, writing dummy data')
         dummy=numpy.zeros(2, dtype='f4') + -9999
         outfits.write(dummy, extname='image_cutouts')
         dummy=numpy.zeros(2, dtype='f4')

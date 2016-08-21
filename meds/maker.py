@@ -691,26 +691,6 @@ class MEDSMaker(dict):
                           v.min() - vbuff,
                           v.max() + vbuff)
 
-        """
-        OLD CODE - keeping here for now
-        # corners in default coord. system
-        rows = numpy.array([0.0,    0.0, nrow-1, nrow-1])
-        cols = numpy.array([0.0, ncol-1,    0.0, ncol-1])
-
-        pos=make_wcs_positions(rows, cols, wcs.position_offset, inverse=True)
-        ra,dec = wcs.image2sky(pos['wcs_col'], pos['wcs_row'])
-
-        decrad = numpy.deg2rad(dec)
-        rafac  = numpy.cos(decrad).min()
-
-        rabuff  = self['bounds_buffer_radec']/rafac
-        decbuff = self['bounds_buffer_radec']
-        sky_bnds = Bounds(ra.min()  - rabuff,
-                          ra.max()  + rabuff,
-                          dec.min() - decbuff,
-                          dec.max() + decbuff)
-        """
-
         return sky_bnds,ra_ccd,dec_ccd
 
     def _get_image_bounds(self, wcs):

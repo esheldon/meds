@@ -7,6 +7,7 @@ MEDSCatalogExtractor
     A class to extract the catalog and metadata from a MEDS
     and write to a new file.
 """
+from __future__ import print_function
 import os
 import fitsio
 import numpy
@@ -62,13 +63,13 @@ class MEDSExtractor(object):
     def close(self):
         if self.cleanup:
             if os.path.exists(self.sub_file):
-                print 'removing sub file:',self.sub_file
+                print('removing sub file:',self.sub_file)
                 os.remove(self.sub_file)
 
     def _extract(self):
         
         with fitsio.FITS(self.meds_file) as infits:
-            print 'opening sub file:',self.sub_file
+            print('opening sub file:',self.sub_file)
             with fitsio.FITS(self.sub_file,'rw',clobber=True) as outfits:
 
                 #
@@ -129,7 +130,7 @@ class MEDSExtractor(object):
 
 
     def _write_dummy(self, outfits):
-        print 'no objects with cutouts, writing dummy data'
+        print('no objects with cutouts, writing dummy data')
         dummy=numpy.zeros(2, dtype='f4') + -9999
         outfits.write(dummy, extname='image_cutouts')
         dummy=numpy.zeros(2, dtype='f4')
@@ -213,13 +214,13 @@ class MEDSCatalogExtractor(object):
     def close(self):
         if self.cleanup:
             if os.path.exists(self.new_file):
-                print 'removing cat only file:',self.new_file
+                print('removing cat only file:',self.new_file)
                 os.remove(self.new_file)
 
     def _extract(self):
         
         with fitsio.FITS(self.meds_file) as infits:
-            print 'opening cat only file:',self.new_file
+            print('opening cat only file:',self.new_file)
             with fitsio.FITS(self.new_file,'rw',clobber=True) as outfits:
 
                 #
