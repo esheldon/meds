@@ -41,13 +41,27 @@ class MEDSExtractor(object):
 
     Optionally clean up the new file when the object is destroyed.
     """
-    def __init__(self, meds_file, start, end, sub_file, cleanup=False):
+    def __init__(self, meds_file, start, end, sub_file,
+                 cleanup=False, copy_all=False):
         self.meds_file=meds_file
         self.start=start
         self.end=end
         self.sub_file=sub_file
         self.cleanup=cleanup
+        self.copy_all=copy_all
 
+        # keep track of these in case copy_all is sent, so we
+        # know what extra extensions to copy
+        self.default_ext=[
+            'object_data',
+            'image_info',
+            'metadata',
+            'image_cutouts',
+            'weight_cutouts',
+            'seg_cutouts',
+            'bmask_cutouts',
+            'psf',
+        ]
         self._check_inputs()
         self._extract()
 
@@ -128,6 +142,14 @@ class MEDSExtractor(object):
                         outfits.write(psfs, extname='psf')
                         del psfs
 
+                if self.copy_all:
+                    for hdu in infits:
+                        if hdu.has_data():
+                            extname=hdu.get_extname()
+                            if extname not in self.default_ext:
+                                h=hdu.read_header()
+                                data=hdu.read(header=True)
+                                outfits.write(data, header=h, extname=extname)
 
     def _write_dummy(self, outfits):
         print('no objects with cutouts, writing dummy data')
