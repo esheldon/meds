@@ -148,8 +148,8 @@ class MEDS(object):
     meta=m.get_meta()
 
 
-    Fields in main catalog
-    -----------------------
+    Required Fields in main catalog
+    --------------------------------
 
      id                 i8       id from coadd catalog
      ncutout            i8       number of cutouts for this object
@@ -560,10 +560,8 @@ class MEDS(object):
         se_jacob=self.get_jacobian_matrix(iobj, icutout)
         coadd_jacob=self.get_jacobian_matrix(iobj, 0)
 
-        coadd_rowcen=self['cutout_row'][iobj,0]
-        coadd_colcen=self['cutout_col'][iobj,0]
-        rowcen=self['cutout_row'][iobj,icutout]
-        colcen=self['cutout_col'][iobj,icutout]
+        coadd_rowcen, coadd_colcen = self.get_cutout_rowcol(iobj, 0)
+        rowcen, colcen = self.get_cutout_rowcol(iobj, icutout)
 
         # rows in SE seg mape
         rows,cols=numpy.mgrid[0:seg.shape[0], 0:seg.shape[1]]
@@ -684,8 +682,7 @@ class MEDS(object):
         """
         self._check_indices(iobj,icutout=icutout)
 
-        row0   = self['cutout_row'][iobj,icutout]
-        col0   = self['cutout_col'][iobj,icutout]
+        row0, col0 = self.get_cutout_rowcol(iobj, icutout)
         dudrow = self['dudrow'][iobj,icutout]
         dudcol = self['dudcol'][iobj,icutout]
         dvdrow = self['dvdrow'][iobj,icutout]
@@ -753,6 +750,27 @@ class MEDS(object):
         else:
             return self._cat['number'][iobj]
 
+    def get_cutout_rowcol(self, iobj, icutout):
+        """
+        get cutout_row, cutout_col for the specified object
+        and epoch
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        icutout: integer
+            Index of the cutout for this object.
+
+        returns
+        -------
+        row,col the location in the cutout image
+        """
+        row=self['cutout_row'][iobj,icutout]
+        col=self['cutout_col'][iobj,icutout]
+
+        return row, col
+
     def _make_composite_image(self, iobj, icutout, im, coadd_seg):
         """
         Internal routine to composite the coadd seg onto another image,
@@ -764,10 +782,8 @@ class MEDS(object):
         
         cim=im.copy()
 
-        coadd_rowcen=self['cutout_row'][iobj,0]
-        coadd_colcen=self['cutout_col'][iobj,0]
-        rowcen=self['cutout_row'][iobj,icutout]
-        colcen=self['cutout_col'][iobj,icutout]
+        coadd_rowcen, coadd_colcen = self.get_cutout_rowcol(iobj, 0)
+        rowcen, colcen = self.get_cutout_rowcol(iobj, icutout)
 
         segid=coadd_seg[int(coadd_rowcen),int(coadd_colcen)]
 
