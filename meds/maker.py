@@ -101,10 +101,12 @@ class MEDSMaker(dict):
 
             self._reserve_mosaic_images()
 
-            self._write_cutouts('image')
-            self._write_cutouts('weight')
-            self._write_cutouts('seg')
-            self._write_cutouts('bmask')
+            for type in self['cutout_types']:
+                self._write_cutouts(type)
+                #self._write_cutouts('image')
+                #self._write_cutouts('weight')
+                #self._write_cutouts('seg')
+                #self._write_cutouts('bmask')
 
         print('output is in:',filename)
 
@@ -794,7 +796,7 @@ class MEDSMaker(dict):
         """
         make sure the input structure has the required fields
         """
-        min_st = get_meds_input_struct(1)
+        min_st = self._get_minimal_meds_input()
 
         missing=[]
         for name in min_st.dtype.names:
@@ -804,6 +806,9 @@ class MEDSMaker(dict):
         if len(missing) > 0:
             missing=', '.join(missing)
             raise ValueError("missing fields from obj_data: '%s'" % missing)
+
+    def _get_minimal_meds_input(self):
+        return get_meds_input_struct(1)
 
     def _get_full_obj_data(self, obj_data):
         """
