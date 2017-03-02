@@ -820,11 +820,16 @@ class MEDSMaker(dict):
         make a full object structure, adding in any extra fields from the
         input structure.  Copy over the common fields
         """
-        #nmax = self.image_info.size
-        #if nmax < 2:
-        #    nmax = 2
+
         # we will fix this later
-        nmax=2
+        if 'ncutout_max' in self:
+            nmax=self['ncutout_max']
+        else:
+            # this could be way too large!
+            nmax = self.image_info.size
+
+        if nmax < 2:
+            nmax = 2
 
         self._set_extra_fields(obj_data, nmax)
 
