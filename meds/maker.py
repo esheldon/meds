@@ -10,6 +10,11 @@ from numpy import where, zeros
 # external requirements
 import fitsio
 
+try:
+    xrange
+except:
+    xrange=range
+
 # esutil is only needed for the Maker, so we will let
 # it slide if it is missing
 try:
