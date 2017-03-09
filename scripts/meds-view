@@ -15,14 +15,13 @@ parser=ArgumentParser(__doc__)
 
 parser.add_argument('filename',help="MEDS file name")
 
-parser.add_argument('--types',help="types to show; not implemented")
+parser.add_argument('--types',help="types to show")
 
 parser.add_argument('--start',type=int,help="start with this object")
 parser.add_argument('--end',type=int,help="end with this object")
 
 parser.add_argument('--index-file',
                     help="read indices from this file, not yet implemented")
-
 
 parser.add_argument('--save',action='store_true',
                     help="save plot files for each object into cwd")
@@ -249,15 +248,16 @@ def make_combined_mosaic(imlist):
     effect when the grid is not fully packed
     """
     nimage=len(imlist)
-    nrow,ncol=get_grid(nimage)
+
+    grid=Grid(nimage)
     shape=imlist[0].shape
 
-    imtot=numpy.zeros( (nrow*shape[0], ncol*shape[1]) )
+    imtot=numpy.zeros( (grid.nrow*shape[0], grid.ncol*shape[1]) )
 
     for i in xrange(nimage):
         im=imlist[i]
-        row=i/ncol
-        col=i % ncol
+
+        row,col = grid(i)
 
         rstart = row*shape[0]
         rend   = (row+1)*shape[0]
@@ -267,6 +267,7 @@ def make_combined_mosaic(imlist):
 
         imtot[rstart:rend, cstart:cend] = im
 
+    imtot=numpy.flipud(imtot)
     return imtot
 
 
@@ -976,7 +977,8 @@ class Viewer(dict):
             for cutout_type in self.cutout_types:
                 print("    ",cutout_type)
 
-                title='%s-%06d %s' % (self.bname,index,cutout_type)
+                #title='%s-%06d %s' % (self.bname,index,cutout_type)
+                title='%06d %s' % (index,cutout_type)
 
                 if save:
                     fname=self._get_png_filename(index,cutout_type)
@@ -1001,6 +1003,9 @@ class Viewer(dict):
     def plot_one(self, index, cutout_type, **kw):
         imlist = self.m.get_cutout_list(index, type=cutout_type)
 
+        titles=['']*len(imlist)
+        titles[0] = 'coadd'
+        kw['titles']=titles
         plt=view_mosaic(imlist, combine=self.combine, **kw)
         return plt
 
