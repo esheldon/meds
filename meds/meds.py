@@ -20,6 +20,11 @@ See docs for the MEDS class for more info
 """
 
 from __future__ import print_function
+try:
+    xrange
+except:
+    xrange=range
+
 import numpy
 import fitsio
 

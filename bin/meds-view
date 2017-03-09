@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
+try:
+    xrange
+except:
+    xrange=range
+    raw_input=input
 
 import os
 import numpy
@@ -275,8 +280,10 @@ def view_mosaic(imlist, titles=None, combine=False, **keys):
         return view(imtot, **keys)
 
     nimage=len(imlist)
-    nrow,ncol=get_grid(nimage)
-    tab=biggles.Table(nrow,ncol)
+
+    grid = Grid(nimage)
+
+    tab=biggles.Table(grid.nrow,grid.ncol)
     tab.title=title
 
     tkeys={}
@@ -285,8 +292,8 @@ def view_mosaic(imlist, titles=None, combine=False, **keys):
 
     for i in xrange(nimage):
         im=imlist[i]
-        row=i/ncol
-        col=i % ncol
+
+        row,col = grid(i)
 
         if titles is not None:
             title=titles[i]
@@ -299,13 +306,90 @@ def view_mosaic(imlist, titles=None, combine=False, **keys):
     # aspect is ysize/xsize
     aspect=keys.get('aspect',None)
     if aspect is None:
-        aspect = float(nrow)/ncol
+        aspect = float(grid.nrow)/grid.ncol
+
     tab.aspect_ratio=aspect
 
     _writefile_maybe(tab, **keys)
     _show_maybe(tab, **keys)
 
     return tab
+
+class Grid(object):
+    """
+    represent plots in a grid.  The grid is chosen
+    based on the number of plots
+    
+    example
+    -------
+    grid=Grid(n)
+
+    for i in xrange(n):
+        row,col = grid(i)
+
+        # equivalently grid.get_rowcol(i)
+
+        plot_table[row,col] = plot(...)
+    """
+    def __init__(self, nplot):
+        self.set_grid(nplot)
+    
+    def set_grid(self, nplot):
+        """
+        set the grid given the number of plots
+        """
+        from math import sqrt
+
+        self.nplot=nplot
+
+        # first check some special cases
+        if nplot==8:
+            self.nrow, self.ncol = 2,4
+        else:
+
+            sq=int(sqrt(nplot))
+            if nplot==sq*sq:
+                self.nrow, self.ncol = sq,sq
+            elif nplot <= sq*(sq+1):
+                self.nrow, self.ncol = sq,sq+1
+            else:
+                self.nrow, self.ncol = sq+1,sq+1
+
+        self.nplot_tot=self.nrow*self.ncol
+
+    def get_rowcol(self, index):
+        """
+        get the grid position given the number of plots
+
+        move along columns first
+
+        parameters
+        ----------
+        index: int
+            Index in the grid
+
+        example
+        -------
+        nplot=7
+        grid=Grid(nplot)
+        arr=biggles.FramedArray(grid.nrow, grid.ncol)
+
+        for i in xrange(nplot):
+            row,col=grid.get_rowcol(nplot, i)
+            arr[row,col].add( ... )
+        """
+
+        imax=self.nplot_tot-1
+        if index > imax:
+            raise ValueError("index too large %d > %d" % (index,imax))
+
+        row = index//self.ncol
+        col = index % self.ncol
+
+        return row,col
+
+    def __call__(self, index):
+        return self.get_rowcol(index)
 
 def get_grid(nplot):
     """
@@ -866,7 +950,7 @@ class Viewer(dict):
 
         self.bname=bname
 
-    def go(self, save=False, show=True, start=None, end=None, index=None, **kw):
+    def go(self, save=False, show=True, start=None, end=None, indices=None, **kw):
         """
         Can send start,end or a list of indices
         """
@@ -874,34 +958,34 @@ class Viewer(dict):
         if save == False and show==False:
             raise RuntimeError("you should either save or show or both!")
 
+        indices = self._get_indices(start=start, end=end, indices=indices)
 
-        index = self._get_index(start=start, end=end, index=index)
-
-        ntot=len(index)
+        ntot=indices.size
         print("viewing",ntot,"objects")
 
-        for ii,i in enumerate(index):
-            print("%d/%d %.1f%%" % (ii+1,ntot,100*(ii+1)/float(ntot)))
+        for i,index in enumerate(indices):
 
-            if self.m['ncutout'][i] == 0:
+            print("index:",index)
+            print("%d/%d %.1f%%" % (i+1,ntot,100*(i+1)/float(ntot)))
+
+            if self.m['ncutout'][index] == 0:
                 print("    No cutouts found")
                 continue
 
 
-
-
             for cutout_type in self.cutout_types:
+                print("    ",cutout_type)
 
-                title='%s-%06d %s' % (self.bname,i,cutout_type)
+                title='%s-%06d %s' % (self.bname,index,cutout_type)
 
                 if save:
-                    fname=self._get_png_filename(i,cutout_type)
+                    fname=self._get_png_filename(index,cutout_type)
                     print("    writing:",fname)
                 else:
                     fname=None
 
                 plt=self.plot_one(
-                    i,
+                    index,
                     cutout_type,
                     show=show,
                     file=fname,
@@ -920,24 +1004,36 @@ class Viewer(dict):
         plt=view_mosaic(imlist, combine=self.combine, **kw)
         return plt
 
+    """
+    def plot_one(self, index, cutout_type, **kw):
+        image = self.m.get_mosaic(index, type=cutout_type)
+
+        plt=view(image,  **kw)
+        return plt
+    """
+
     def _get_png_filename(self, index,cutout_type):
         return '%s-%06d-%s.png' % (self.bname,index,cutout_type)
 
-    def _get_index(self, start=None, end=None, index=None):
-        if start is not None or end is not None:
+    def _get_indices(self, start=None, end=None, indices=None):
+
+        if indices is not None:
+            ind_out = indices
+        elif start is not None or end is not None:
             if start is None:
                 start=0
+
             if end is None:
                 end=self.m.size
             else:
                 end=end+1
 
-            index = range(start,end)
+            ind_out = numpy.arange(start,end)
 
-        elif index is None:
-            index = range(self.m.size)
+        else:
+            ind_out = numpy.arange(self.m.size)
 
-        return index
+        return ind_out
 
         
 def main():
