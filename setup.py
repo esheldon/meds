@@ -3,7 +3,11 @@ import glob
 from distutils.core import setup, Extension
 import numpy
 
-scripts=['meds-extract-range','meds-extract-catalog']
+scripts=[
+    'meds-extract-range',
+    'meds-extract-catalog',
+    'meds-view',
+]
 scripts=[os.path.join('./scripts', s) for s in scripts]
 
 sources=["meds/_uberseg.c"]
