@@ -28,6 +28,9 @@ parser.add_argument('--save',action='store_true',
 parser.add_argument('--show',action='store_true',
                     help="show each plot, with a prompt to the user")
 
+parser.add_argument('--html-file',
+                    help="write out an html file displaying the images")
+
 parser.add_argument('--combine',action='store_true',
                     help="combine the images into a mosiac")
 
@@ -951,13 +954,29 @@ class Viewer(dict):
 
         self.bname=bname
 
-    def go(self, save=False, show=True, start=None, end=None, indices=None, **kw):
+    def go(self,
+           save=False,
+           show=True,
+           start=None,
+           end=None,
+           indices=None,
+           html_file=None,
+           **kw):
         """
         Can send start,end or a list of indices
         """
 
+        if html_file is not None:
+            dohtml=True
+            save=True
+        else:
+            dohtml=False
+
         if save == False and show==False:
             raise RuntimeError("you should either save or show or both!")
+
+        if dohtml:
+            html_fobj = self._start_html(html_file)
 
         indices = self._get_indices(start=start, end=end, indices=indices)
 
@@ -973,6 +992,8 @@ class Viewer(dict):
                 print("    No cutouts found")
                 continue
 
+            if dohtml:
+                self._html_begin_line(html_fobj)
 
             for cutout_type in self.cutout_types:
                 print("    ",cutout_type)
@@ -996,9 +1017,19 @@ class Viewer(dict):
                     **kw
                 )
 
+                if dohtml:
+                    self._html_add_item(html_fobj, fname)
+
+            if dohtml:
+                self._html_end_line(html_fobj)
+
+
             if show:
                 if raw_input('hit a key (q to quit): ').lower()=='q':
                     return
+
+        if dohtml:
+            self._end_html(html_fobj)
 
     def plot_one(self, index, cutout_type, **kw):
         imlist = self.m.get_cutout_list(index, type=cutout_type)
@@ -1040,6 +1071,39 @@ class Viewer(dict):
 
         return ind_out
 
+    def _html_add_item(self, fobj, fname):
+        fobj.write("<td><img src=\"%s\"></td>" % fname)
+
+    def _html_begin_line(self, fobj):
+        fobj.write("        <tr>")
+
+    def _html_end_line(self, fobj):
+        fobj.write("</tr>\n")
+
+    def _start_html(self, html_file):
+        fobj = open(html_file,'w')
+        fobj.write(_html_head)
+        return fobj
+
+    def _end_html(self, fobj):
+        fobj.write(_html_foot)
+
+
+_html_head="""
+<html>
+    <body bgcolor=black>
+
+    <table>
+"""
+_html_foot="""
+    </table>
+    </body>
+</html>
+"""
+
+
+def load_indices(fname):
+    return numpy.fromfile(fname, sep='\n', dtype='i8')
         
 def main():
     args=parser.parse_args()
@@ -1054,11 +1118,17 @@ def main():
         cutout_types=types,
     )
 
+    ind = None
+    if args.index_file is not None:
+        ind = load_indices(args.index_file)
+
     viewer.go(
         save=args.save,
         show=args.show,
         start=args.start,
         end=args.end,
+        indices=ind,
+        html_file=args.html_file,
     )
     
 
