@@ -23,13 +23,15 @@ try:
 except:
     have_esutil=False
 
-from .util import \
-    make_wcs_positions, \
-    get_meds_output_struct, \
-    get_meds_input_struct, \
-    get_image_info_struct, \
-    radec_to_uv, \
-    MEDSCreationError
+from .util import (
+    make_wcs_positions,
+    get_meds_output_struct,
+    get_meds_input_struct,
+    get_image_info_struct,
+    get_image_info_dtype,
+    radec_to_uv,
+    MEDSCreationError,
+)
 
 from .bounds import Bounds
 from .defaults import default_config, default_values
@@ -67,7 +69,7 @@ class MEDSMaker(dict):
         self._set_extra_config()
 
         # make copies since we may alter some things
-        self.image_info = image_info.copy()
+        self._set_image_info(image_info)
         self._set_meta_data(meta_data)
         self._set_obj_data(obj_data)
 
@@ -108,10 +110,6 @@ class MEDSMaker(dict):
 
             for type in self['cutout_types']:
                 self._write_cutouts(type)
-                #self._write_cutouts('image')
-                #self._write_cutouts('weight')
-                #self._write_cutouts('seg')
-                #self._write_cutouts('bmask')
 
         print('output is in:',filename)
 
@@ -421,7 +419,7 @@ class MEDSMaker(dict):
 
         for file_id in xrange(nim):
 
-            self._get_wcs(file_id)
+            #self._get_wcs(file_id)
             impath=self.image_info['image_path'][file_id].strip()
             position_offset=self.image_info['position_offset'][file_id]
 
