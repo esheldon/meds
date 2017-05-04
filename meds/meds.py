@@ -210,6 +210,10 @@ class MEDS(object):
         -------
         The cutout image
         """
+
+        if type=='psf':
+            return self.get_psf(iobj,icut)
+
         self._check_indices(iobj, icutout=icutout)
 
         box_size=self._cat['box_size'][iobj]
@@ -274,6 +278,9 @@ class MEDS(object):
         A list of images hold all cutouts.
         """
 
+        if type=='psf':
+            return self.get_psf_list(iobj)
+
         mosaic=self.get_mosaic(iobj,type=type)
         ncutout=self._cat['ncutout'][iobj]
         box_size=self._cat['box_size'][iobj]
@@ -307,6 +314,13 @@ class MEDS(object):
         imflat = self._fits['psf'][start_row:row_end]
         im = imflat.reshape(box_size,box_size)
         return im
+
+    def get_psf_list(self, iobj):
+        """
+        get a list of psf images
+        """
+        ncut=self['ncutout'][iobj]
+        return [self.get_psf(iobj, icut) for icut in xrange(ncut)]
 
     def get_cweight_cutout(self, iobj, icutout):
         """
