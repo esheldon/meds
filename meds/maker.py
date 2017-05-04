@@ -62,8 +62,10 @@ class MEDSMaker(dict):
     def __init__(self,
                  obj_data,
                  image_info,
+                 psf_data=None,
                  config=None,
                  meta_data=None):
+
 
         self._load_config(config)
         self._set_extra_config()
@@ -71,6 +73,7 @@ class MEDSMaker(dict):
         # make copies since we may alter some things
         self._set_image_info(image_info)
         self._set_meta_data(meta_data)
+        self._set_psf_data(psf_data)
         self._set_obj_data(obj_data)
 
         self._force_box_sizes_even()
@@ -110,6 +113,9 @@ class MEDSMaker(dict):
 
             for type in self['cutout_types']:
                 self._write_cutouts(type)
+
+            if self.psf_data is not None:
+                self._write_psf_cutouts()
 
         print('output is in:',filename)
 
@@ -173,6 +179,26 @@ class MEDSMaker(dict):
 
             # now need to write the header
             fits[extname].write_keys(header, clean=False)
+
+        if self.psf_data is not None:
+            print('    reserving psf mosaic')
+            extname='psf'
+            dtype='f4'
+            psf_dims = [self.total_psf_pixels]
+
+            # this reserves space for the images and header,
+            # but no data is written
+            fits.create_image_hdu(
+                img=None,
+                dtype=dtype,
+                dims=psf_dims,
+                extname=extname,
+                header=header,
+            )
+
+            # now need to write the header
+            fits[extname].write_keys(header, clean=False)
+
 
     def _write_cutouts(self, cutout_type):
         """
@@ -244,6 +270,44 @@ class MEDSMaker(dict):
               col_box[0]:col_box[1]] = read_im
 
         cutout_hdu.write(subim, start=start_row)
+
+    def _write_psf_cutouts(self):
+        """
+        write the cutouts for the specified type
+        """
+
+        print('writing psf cutouts')
+
+        obj_data=self.obj_data
+        psf_data=self.psf_data
+
+        nfile=self.image_info.size
+        nobj=obj_data.size
+
+        cutout_hdu = self.fits['psf']
+
+        for file_id in xrange(nfile):
+
+            for iobj in xrange(nobj):
+                ncut=obj_data['ncutout'][iobj]
+                esize = obj_data['psf_box_size'][iobj]
+
+                for icut in xrange(ncut):
+
+                    file_id = obj_data['file_id'][iobj, icut]
+
+                    row = obj_data['orig_row'][iobj, icut]
+                    col = obj_data['orig_col'][iobj, icut]
+                    start_row = obj_data['psf_start_row'][iobj, icut]
+
+                    psfim = psf_data[file_id].get_rec(row, col)
+
+                    if psfim.shape[0] != esize:
+                        raise ValueError("psf size mismatch, expected %d "
+                                         "got %d" % (esize, psfim.shape[0]))
+
+                    cutout_hdu.write(psfim, start=start_row)
+
 
     def _get_clipped_boxes(self, dim, start, bsize):
         """
@@ -542,6 +606,9 @@ class MEDSMaker(dict):
         self.obj_data = self._make_resized_data(obj_data)
         self._set_start_rows_and_pixel_count()
 
+        if self.psf_data is not None:
+            self._set_psf_layout()
+
     def _set_start_rows_and_pixel_count(self):
         """
         set the total number of pixels in each mosaic
@@ -594,6 +661,7 @@ class MEDSMaker(dict):
         the actual maximum ncutout
         """
 
+
         nmax = odata['file_id'].shape[1]
         new_nmax = odata['ncutout'].max()
         if new_nmax < 2:
@@ -601,8 +669,13 @@ class MEDSMaker(dict):
         temp_obj_data = odata
 
         nobj = temp_obj_data.size
-        new_data = get_meds_output_struct(nobj, new_nmax,
-                                          extra_fields=self['extra_fields'])
+
+        extra_fields = self._get_extra_fields(odata,new_nmax)
+        new_data = get_meds_output_struct(
+            nobj,
+            new_nmax,
+            extra_fields=extra_fields,
+        )
 
         tmpst = get_meds_output_struct(1, new_nmax)
         required_fields = tmpst.dtype.names
@@ -795,6 +868,62 @@ class MEDSMaker(dict):
         self._check_required_obj_data_fields(obj_data)
         self.obj_data = self._get_full_obj_data(obj_data)
 
+    def _set_psf_data(self, psf_data):
+
+        if psf_data is not None:
+            """
+            currently only accept a list of galsim objects
+            """
+            if len(psf_data) != self.image_info.size:
+                raise ValueError("psf_data must be a list of same "
+                                 "size as image info struct")
+            
+            p = psf_data[0]
+            try:
+                tmp_image = p.get_rec(100, 100)
+            except:
+                raise ValueError("psf data do not support the "
+                                 "get_rec() method: '%s'" % str(type(p)))
+
+        self.psf_data=psf_data
+
+    def _set_psf_layout(self):
+        """
+        set the box sizes and start row for each psf image
+        """
+        if self.psf_data is None:
+            raise ValueError("_set_psf_layout called "
+                             "with no psf data set")
+
+        obj_data=self.obj_data
+        psf_data=self.psf_data
+
+        # currently require all the same size
+        for i,p in enumerate(psf_data):
+            if i==0:
+                psf_size=p.get_shape()[0]
+            else:
+                tsize = p.get_shape()[0]
+                if tsize != psf_size:
+                    raise ValueError("currently all psfs "
+                                     "must be same size")
+
+        obj_data['psf_box_size'] = psf_size
+        total_psf_pixels = 0
+
+        psf_npix = psf_size*psf_size
+
+        psf_start_row = 0
+        for i in xrange(obj_data.size):
+            for j in xrange(obj_data['ncutout'][i]):
+                obj_data['psf_start_row'][i,j] = psf_start_row
+
+                psf_start_row += psf_npix
+                total_psf_pixels += psf_npix
+
+
+        self.total_psf_pixels = total_psf_pixels
+        
     def _check_required_obj_data_fields(self, obj_data):
         """
         make sure the input structure has the required fields
@@ -829,17 +958,19 @@ class MEDSMaker(dict):
         if nmax < 2:
             nmax = 2
 
-        self._set_extra_fields(obj_data, nmax)
+        extra_fields = self._get_extra_fields(obj_data, nmax)
 
         nobj = obj_data.size
-        new_obj_data = \
-            get_meds_output_struct(nobj, nmax,
-                                   extra_fields=self['extra_fields'])
+        new_obj_data = get_meds_output_struct(
+            nobj,
+            nmax,
+            extra_fields=extra_fields,
+        )
         eu.numpy_util.copy_fields(obj_data, new_obj_data)
 
         return new_obj_data
 
-    def _set_extra_fields(self, obj_data, nmax):
+    def _get_extra_fields(self, obj_data, nmax):
         """
         determine the tags in obj_data but not in the required
         fields for the output object_data
@@ -847,13 +978,26 @@ class MEDSMaker(dict):
         full_st = get_meds_output_struct(1, nmax)
         extra_fields = []
 
+        pdt = self._get_psf_dtype(nmax)
+        skip = [dt[0] for dt in pdt]
+
         for dt in obj_data.dtype.descr:
             name=dt[0]
 
-            if name not in full_st.dtype.names:
+            if (name not in full_st.dtype.names
+                    and name not in skip):
                 extra_fields.append(dt)
 
-        self['extra_fields'] = extra_fields
+        if self.psf_data is not None:
+            extra_fields += self._get_psf_dtype(nmax)
+
+        return extra_fields
+
+    def _get_psf_dtype(self, nmax):
+        return [
+            ('psf_box_size','i8'),
+            ('psf_start_row','i8',nmax),
+        ]
 
     def _set_image_info(self, image_info):
         """
