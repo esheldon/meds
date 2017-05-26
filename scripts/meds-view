@@ -1034,6 +1034,18 @@ class Viewer(dict):
     def plot_one(self, index, cutout_type, **kw):
         imlist = self.m.get_cutout_list(index, type=cutout_type)
 
+        nonlinear=None
+        if cutout_type=='image':
+            nonlinear=0.1
+            old_imlist=imlist
+            imlist=[]
+            wtlist = self.m.get_cutout_list(index, type='weight')
+            for im,wt in zip(old_imlist,wtlist):
+                std = numpy.sqrt(1.0/numpy.median(wt))
+                im += std
+                im *= (1.0/im.max())
+                imlist.append(im)
+
         titles=['']*len(imlist)
         titles[0] = 'coadd'
         kw['titles']=titles
