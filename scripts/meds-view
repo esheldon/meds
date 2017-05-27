@@ -1032,7 +1032,10 @@ class Viewer(dict):
             self._end_html(html_fobj)
 
     def plot_one(self, index, cutout_type, **kw):
-        imlist = self.m.get_cutout_list(index, type=cutout_type)
+        if cutout_type=='uberseg':
+            imlist = self.m.get_uberseg_list(index)
+        else:
+            imlist = self.m.get_cutout_list(index, type=cutout_type)
 
         nonlinear=None
         if cutout_type=='image':
