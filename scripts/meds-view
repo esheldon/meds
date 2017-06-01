@@ -985,7 +985,8 @@ class Viewer(dict):
 
         for i,index in enumerate(indices):
 
-            print("index:",index)
+            id = self.m['id'][index]
+            print("index: %d id: %d" % (index,id))
             print("%d/%d %.1f%%" % (i+1,ntot,100*(i+1)/float(ntot)))
 
             if self.m['ncutout'][index] == 0:
@@ -999,7 +1000,7 @@ class Viewer(dict):
                 print("    ",cutout_type)
 
                 #title='%s-%06d %s' % (self.bname,index,cutout_type)
-                title='%06d %s' % (index,cutout_type)
+                title='%06d %d %s' % (index,id,cutout_type)
 
                 if save:
                     fname=self._get_png_filename(index,cutout_type)
@@ -1044,9 +1045,23 @@ class Viewer(dict):
             imlist=[]
             wtlist = self.m.get_cutout_list(index, type='weight')
             for im,wt in zip(old_imlist,wtlist):
+
+                wnan = numpy.where(numpy.isnan(im))
+                if wnan[0].size > 0:
+                    im[wnan] = 0.0
+
                 std = numpy.sqrt(1.0/numpy.median(wt))
                 im += std
                 im *= (1.0/im.max())
+
+                imlist.append(im)
+        elif cutout_type in ['seg','bmask']:
+            old_imlist=imlist
+            imlist=[]
+            for im in old_imlist:
+                im += 1
+                im = numpy.log10(im)
+
                 imlist.append(im)
 
         titles=['']*len(imlist)
