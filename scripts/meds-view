@@ -1048,13 +1048,15 @@ class Viewer(dict):
 
                 wnan = numpy.where(numpy.isnan(im))
                 if wnan[0].size > 0:
+                    print("converting %d/%d nan" % (wnan[0].size, im.size))
                     im[wnan] = 0.0
 
-                std = numpy.sqrt(1.0/numpy.median(wt))
+                std = numpy.sqrt(1.0/wt.max())
                 im += std
                 im *= (1.0/im.max())
 
                 imlist.append(im)
+
         elif cutout_type in ['seg','bmask']:
             old_imlist=imlist
             imlist=[]
