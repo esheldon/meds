@@ -39,6 +39,9 @@ from .defaults import default_config, default_values
 
 SUPPORTED_CUTOUT_TYPES = ['image','weight','seg','bmask']
 
+# meds file format version
+MEDS_VERSION='0.9.1'
+
 class MEDSMaker(dict):
     """
     Write MEDS files.  See the docs at https://github.com/esheldon/meds
@@ -849,6 +852,10 @@ class MEDSMaker(dict):
             if vname not in mnames:
                 mdt += [(vname,version_fmt)]
 
+        if 'meds_version' in meta_data_in.dtype.names:
+            raise ValueError("don't put meds_version into "
+                             "the input meta data")
+        mdt += [('meds_version','S%d' % len(MEDS_VERSION))] 
         meta_data = zeros(nmeta, dtype=mdt)
 
         if meta_data_in is not None:
@@ -857,6 +864,8 @@ class MEDSMaker(dict):
         meta_data['numpy_version'] = numpy_version
         meta_data['esutil_version'] = esutil_version
         meta_data['fitsio_version'] = fitsio_version
+
+        meta_data['meds_version'] = MEDS_VERSION
 
         self.meta_data=meta_data
 
