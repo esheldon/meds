@@ -360,7 +360,10 @@ class MEDSMaker(dict):
         """
         get the cutout hdu object for the specified cutout type
         """
-        tkey = '%s_cutouts' % cutout_type
+        if cutout_type=='psf':
+            tkey = 'psf'
+        else:
+            tkey = '%s_cutouts' % cutout_type
         cutout_hdu = self.fits[tkey]
         return cutout_hdu
 
