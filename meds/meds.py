@@ -20,6 +20,11 @@ See docs for the MEDS class for more info
 """
 
 from __future__ import print_function
+try:
+    xrange
+except:
+    xrange=range
+
 import numpy
 import fitsio
 
@@ -205,6 +210,10 @@ class MEDS(object):
         -------
         The cutout image
         """
+
+        if type=='psf':
+            return self.get_psf(iobj,icut)
+
         self._check_indices(iobj, icutout=icutout)
 
         box_size=self._cat['box_size'][iobj]
@@ -269,6 +278,9 @@ class MEDS(object):
         A list of images hold all cutouts.
         """
 
+        if type=='psf':
+            return self.get_psf_list(iobj)
+
         mosaic=self.get_mosaic(iobj,type=type)
         ncutout=self._cat['ncutout'][iobj]
         box_size=self._cat['box_size'][iobj]
@@ -295,13 +307,25 @@ class MEDS(object):
 
         self._check_indices(iobj, icutout=icutout)
 
-        box_size=self._cat['psf_box_size'][iobj]
+        cat=self._cat
+        if len(cat['psf_box_size'].shape) > 1:
+            box_size=self._cat['psf_box_size'][iobj,icutout]
+        else:
+            box_size=self._cat['psf_box_size'][iobj]
+
         start_row = self._cat['psf_start_row'][iobj,icutout]
         row_end = start_row + box_size*box_size
 
         imflat = self._fits['psf'][start_row:row_end]
         im = imflat.reshape(box_size,box_size)
         return im
+
+    def get_psf_list(self, iobj):
+        """
+        get a list of psf images
+        """
+        ncut=self['ncutout'][iobj]
+        return [self.get_psf(iobj, icut) for icut in xrange(ncut)]
 
     def get_cweight_cutout(self, iobj, icutout):
         """
@@ -379,7 +403,9 @@ class MEDS(object):
         wlist = split_mosaic(wtmosaic)
         return wlist
 
-    def get_cweight_cutout_nearest(self, iobj, icutout, fast=True):
+
+
+    def get_uberseg(self, iobj, icutout, fast=True):
         """
         get the cweight map and zero out pixels not nearest to central object
 
@@ -436,6 +462,40 @@ class MEDS(object):
                         weight[i,j] = 0.
 
         return weight
+
+    get_cweight_cutout_nearest = get_uberseg
+
+    def get_uberseg_list(self, iobj, fast=True):
+        """
+        Composite the weight and seg maps, interpolating seg map from the coadd
+
+        The weight is set to zero outside the region as defined in the coadd
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+
+        returns
+        -------
+        A list containing all weight maps
+        """
+
+        useg_list=[]
+        for i in xrange(self['ncutout'][iobj]):
+            uberseg = self.get_uberseg(
+                iobj,
+                i,
+                fast=fast,
+            )
+            
+            useg_list.append(uberseg)
+
+        return useg_list
+
+    get_cweight_cutout_nearest_list = get_uberseg_list
+
+
 
     def get_cseg_cutout(self, iobj, icutout):
         """

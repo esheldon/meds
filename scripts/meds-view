@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
+try:
+    xrange
+except:
+    xrange=range
+    raw_input=input
 
 import os
 import numpy
@@ -10,7 +15,7 @@ parser=ArgumentParser(__doc__)
 
 parser.add_argument('filename',help="MEDS file name")
 
-parser.add_argument('--types',help="types to show; not implemented")
+parser.add_argument('--types',help="types to show")
 
 parser.add_argument('--start',type=int,help="start with this object")
 parser.add_argument('--end',type=int,help="end with this object")
@@ -18,11 +23,13 @@ parser.add_argument('--end',type=int,help="end with this object")
 parser.add_argument('--index-file',
                     help="read indices from this file, not yet implemented")
 
-
 parser.add_argument('--save',action='store_true',
                     help="save plot files for each object into cwd")
 parser.add_argument('--show',action='store_true',
                     help="show each plot, with a prompt to the user")
+
+parser.add_argument('--html-file',
+                    help="write out an html file displaying the images")
 
 parser.add_argument('--combine',action='store_true',
                     help="combine the images into a mosiac")
@@ -244,15 +251,16 @@ def make_combined_mosaic(imlist):
     effect when the grid is not fully packed
     """
     nimage=len(imlist)
-    nrow,ncol=get_grid(nimage)
+
+    grid=Grid(nimage)
     shape=imlist[0].shape
 
-    imtot=numpy.zeros( (nrow*shape[0], ncol*shape[1]) )
+    imtot=numpy.zeros( (grid.nrow*shape[0], grid.ncol*shape[1]) )
 
     for i in xrange(nimage):
         im=imlist[i]
-        row=i/ncol
-        col=i % ncol
+
+        row,col = grid(i)
 
         rstart = row*shape[0]
         rend   = (row+1)*shape[0]
@@ -262,6 +270,7 @@ def make_combined_mosaic(imlist):
 
         imtot[rstart:rend, cstart:cend] = im
 
+    imtot=numpy.flipud(imtot)
     return imtot
 
 
@@ -275,8 +284,10 @@ def view_mosaic(imlist, titles=None, combine=False, **keys):
         return view(imtot, **keys)
 
     nimage=len(imlist)
-    nrow,ncol=get_grid(nimage)
-    tab=biggles.Table(nrow,ncol)
+
+    grid = Grid(nimage)
+
+    tab=biggles.Table(grid.nrow,grid.ncol)
     tab.title=title
 
     tkeys={}
@@ -285,8 +296,8 @@ def view_mosaic(imlist, titles=None, combine=False, **keys):
 
     for i in xrange(nimage):
         im=imlist[i]
-        row=i/ncol
-        col=i % ncol
+
+        row,col = grid(i)
 
         if titles is not None:
             title=titles[i]
@@ -299,13 +310,90 @@ def view_mosaic(imlist, titles=None, combine=False, **keys):
     # aspect is ysize/xsize
     aspect=keys.get('aspect',None)
     if aspect is None:
-        aspect = float(nrow)/ncol
+        aspect = float(grid.nrow)/grid.ncol
+
     tab.aspect_ratio=aspect
 
     _writefile_maybe(tab, **keys)
     _show_maybe(tab, **keys)
 
     return tab
+
+class Grid(object):
+    """
+    represent plots in a grid.  The grid is chosen
+    based on the number of plots
+    
+    example
+    -------
+    grid=Grid(n)
+
+    for i in xrange(n):
+        row,col = grid(i)
+
+        # equivalently grid.get_rowcol(i)
+
+        plot_table[row,col] = plot(...)
+    """
+    def __init__(self, nplot):
+        self.set_grid(nplot)
+    
+    def set_grid(self, nplot):
+        """
+        set the grid given the number of plots
+        """
+        from math import sqrt
+
+        self.nplot=nplot
+
+        # first check some special cases
+        if nplot==8:
+            self.nrow, self.ncol = 2,4
+        else:
+
+            sq=int(sqrt(nplot))
+            if nplot==sq*sq:
+                self.nrow, self.ncol = sq,sq
+            elif nplot <= sq*(sq+1):
+                self.nrow, self.ncol = sq,sq+1
+            else:
+                self.nrow, self.ncol = sq+1,sq+1
+
+        self.nplot_tot=self.nrow*self.ncol
+
+    def get_rowcol(self, index):
+        """
+        get the grid position given the number of plots
+
+        move along columns first
+
+        parameters
+        ----------
+        index: int
+            Index in the grid
+
+        example
+        -------
+        nplot=7
+        grid=Grid(nplot)
+        arr=biggles.FramedArray(grid.nrow, grid.ncol)
+
+        for i in xrange(nplot):
+            row,col=grid.get_rowcol(nplot, i)
+            arr[row,col].add( ... )
+        """
+
+        imax=self.nplot_tot-1
+        if index > imax:
+            raise ValueError("index too large %d > %d" % (index,imax))
+
+        row = index//self.ncol
+        col = index % self.ncol
+
+        return row,col
+
+    def __call__(self, index):
+        return self.get_rowcol(index)
 
 def get_grid(nplot):
     """
@@ -866,42 +954,62 @@ class Viewer(dict):
 
         self.bname=bname
 
-    def go(self, save=False, show=True, start=None, end=None, index=None, **kw):
+    def go(self,
+           save=False,
+           show=True,
+           start=None,
+           end=None,
+           indices=None,
+           html_file=None,
+           **kw):
         """
         Can send start,end or a list of indices
         """
 
+        if html_file is not None:
+            dohtml=True
+            save=True
+        else:
+            dohtml=False
+
         if save == False and show==False:
             raise RuntimeError("you should either save or show or both!")
 
+        if dohtml:
+            html_fobj = self._start_html(html_file)
 
-        index = self._get_index(start=start, end=end, index=index)
+        indices = self._get_indices(start=start, end=end, indices=indices)
 
-        ntot=len(index)
+        ntot=indices.size
         print("viewing",ntot,"objects")
 
-        for ii,i in enumerate(index):
-            print("%d/%d %.1f%%" % (ii+1,ntot,100*(ii+1)/float(ntot)))
+        for i,index in enumerate(indices):
 
-            if self.m['ncutout'][i] == 0:
+            id = self.m['id'][index]
+            print("index: %d id: %d" % (index,id))
+            print("%d/%d %.1f%%" % (i+1,ntot,100*(i+1)/float(ntot)))
+
+            if self.m['ncutout'][index] == 0:
                 print("    No cutouts found")
                 continue
 
-
-
+            if dohtml:
+                self._html_begin_line(html_fobj)
 
             for cutout_type in self.cutout_types:
+                print("    ",cutout_type)
 
-                title='%s-%06d %s' % (self.bname,i,cutout_type)
+                #title='%s-%06d %s' % (self.bname,index,cutout_type)
+                title='%06d %d %s' % (index,id,cutout_type)
 
                 if save:
-                    fname=self._get_png_filename(i,cutout_type)
+                    fname=self._get_png_filename(index,cutout_type)
                     print("    writing:",fname)
                 else:
                     fname=None
 
                 plt=self.plot_one(
-                    i,
+                    index,
                     cutout_type,
                     show=show,
                     file=fname,
@@ -910,35 +1018,124 @@ class Viewer(dict):
                     **kw
                 )
 
+                if dohtml:
+                    self._html_add_item(html_fobj, fname)
+
+            if dohtml:
+                self._html_end_line(html_fobj)
+
+
             if show:
                 if raw_input('hit a key (q to quit): ').lower()=='q':
                     return
 
-    def plot_one(self, index, cutout_type, **kw):
-        imlist = self.m.get_cutout_list(index, type=cutout_type)
+        if dohtml:
+            self._end_html(html_fobj)
 
+    def plot_one(self, index, cutout_type, **kw):
+        if cutout_type=='uberseg':
+            imlist = self.m.get_uberseg_list(index)
+        else:
+            imlist = self.m.get_cutout_list(index, type=cutout_type)
+
+        nonlinear=None
+        if cutout_type=='image':
+            nonlinear=0.1
+            old_imlist=imlist
+            imlist=[]
+            wtlist = self.m.get_cutout_list(index, type='weight')
+            for im,wt in zip(old_imlist,wtlist):
+
+                wnan = numpy.where(numpy.isnan(im))
+                if wnan[0].size > 0:
+                    print("converting %d/%d nan" % (wnan[0].size, im.size))
+                    im[wnan] = 0.0
+
+                std = numpy.sqrt(1.0/wt.max())
+                im += std
+                im *= (1.0/im.max())
+
+                imlist.append(im)
+
+        elif cutout_type in ['seg','bmask']:
+            old_imlist=imlist
+            imlist=[]
+            for im in old_imlist:
+                im += 1
+                im = numpy.log10(im)
+
+                imlist.append(im)
+
+        titles=['']*len(imlist)
+        titles[0] = 'coadd'
+        kw['titles']=titles
         plt=view_mosaic(imlist, combine=self.combine, **kw)
         return plt
+
+    """
+    def plot_one(self, index, cutout_type, **kw):
+        image = self.m.get_mosaic(index, type=cutout_type)
+
+        plt=view(image,  **kw)
+        return plt
+    """
 
     def _get_png_filename(self, index,cutout_type):
         return '%s-%06d-%s.png' % (self.bname,index,cutout_type)
 
-    def _get_index(self, start=None, end=None, index=None):
-        if start is not None or end is not None:
+    def _get_indices(self, start=None, end=None, indices=None):
+
+        if indices is not None:
+            ind_out = indices
+        elif start is not None or end is not None:
             if start is None:
                 start=0
+
             if end is None:
                 end=self.m.size
             else:
                 end=end+1
 
-            index = range(start,end)
+            ind_out = numpy.arange(start,end)
 
-        elif index is None:
-            index = range(self.m.size)
+        else:
+            ind_out = numpy.arange(self.m.size)
 
-        return index
+        return ind_out
 
+    def _html_add_item(self, fobj, fname):
+        fobj.write("<td><img src=\"%s\"></td>" % fname)
+
+    def _html_begin_line(self, fobj):
+        fobj.write("        <tr>")
+
+    def _html_end_line(self, fobj):
+        fobj.write("</tr>\n")
+
+    def _start_html(self, html_file):
+        fobj = open(html_file,'w')
+        fobj.write(_html_head)
+        return fobj
+
+    def _end_html(self, fobj):
+        fobj.write(_html_foot)
+
+
+_html_head="""
+<html>
+    <body bgcolor=black>
+
+    <table>
+"""
+_html_foot="""
+    </table>
+    </body>
+</html>
+"""
+
+
+def load_indices(fname):
+    return numpy.fromfile(fname, sep='\n', dtype='i8')
         
 def main():
     args=parser.parse_args()
@@ -953,11 +1150,17 @@ def main():
         cutout_types=types,
     )
 
+    ind = None
+    if args.index_file is not None:
+        ind = load_indices(args.index_file)
+
     viewer.go(
         save=args.save,
         show=args.show,
         start=args.start,
         end=args.end,
+        indices=ind,
+        html_file=args.html_file,
     )
     
 
