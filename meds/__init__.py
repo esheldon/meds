@@ -1,3 +1,4 @@
+from .defaults import __version__
 from . import meds
 
 from .meds import MEDS
@@ -13,5 +14,3 @@ from .maker import MEDSMaker
 
 from .extractor import MEDSExtractor, extract_range, extract_catalog
 from .number_extractor import MEDSNumberExtractor, extract_numbers
-
-__version__="0.9.2"

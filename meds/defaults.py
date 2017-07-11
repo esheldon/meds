@@ -1,3 +1,5 @@
+__version__="0.9.3rc2"
+
 BMASK_EDGE=2**30
 
 # default values in each image type.  If the
