@@ -307,7 +307,12 @@ class MEDS(object):
 
         self._check_indices(iobj, icutout=icutout)
 
-        box_size=self._cat['psf_box_size'][iobj]
+        cat=self._cat
+        if len(cat['psf_box_size'].shape) > 1:
+            box_size=self._cat['psf_box_size'][iobj,icutout]
+        else:
+            box_size=self._cat['psf_box_size'][iobj]
+
         start_row = self._cat['psf_start_row'][iobj,icutout]
         row_end = start_row + box_size*box_size
 

@@ -39,6 +39,9 @@ from .defaults import default_config, default_values
 
 SUPPORTED_CUTOUT_TYPES = ['image','weight','seg','bmask']
 
+# meds file format version
+MEDS_VERSION='0.9.1'
+
 class MEDSMaker(dict):
     """
     Write MEDS files.  See the docs at https://github.com/esheldon/meds
@@ -357,7 +360,10 @@ class MEDSMaker(dict):
         """
         get the cutout hdu object for the specified cutout type
         """
-        tkey = '%s_cutouts' % cutout_type
+        if cutout_type=='psf':
+            tkey = 'psf'
+        else:
+            tkey = '%s_cutouts' % cutout_type
         cutout_hdu = self.fits[tkey]
         return cutout_hdu
 
@@ -390,12 +396,14 @@ class MEDSMaker(dict):
             else:
                 print('    no background for image')
 
+            """
             bmask = self._read_one_image(file_id, 'bmask')
             if bmask is not None:
                 w=self._check_bad_bmask(bmask)
                 im[w] = 0.0
             else:
                 print('    no bmask for image')
+            """
 
             scale = self._get_scale(file_id)
             im *= scale
@@ -403,11 +411,9 @@ class MEDSMaker(dict):
         elif cutout_type=='weight':
 
             if 'min_weight' in self:
-                w=numpy.where(im < self['min_weight'])
-                if w[0].size > 0:
-                    print("        setting",w[0].size,"weight values to zero")
-                    im[w] = 0.0
+                raise RuntimeError("no longer support the min_weight option")
 
+            """
             bmask = self._read_one_image(file_id, 'bmask')
 
             if bmask is not None:
@@ -415,13 +421,14 @@ class MEDSMaker(dict):
                 im[w] = 0.0
             else:
                 print('    no bmask for image')
+            """
 
             scale = self._get_scale(file_id)
             im *= (1.0/scale**2)
 
-
         return im
 
+    '''
     def _check_bad_bmask(self, bmask):
         """
         return indices with not-allowed bits set
@@ -432,7 +439,7 @@ class MEDSMaker(dict):
         if wbad[0].size != 0:
             print('        found %d masked pixels' % wbad[0].size)
         return wbad
-
+    '''
 
     def _read_one_image(self, file_id, cutout_type):
         """
@@ -848,6 +855,10 @@ class MEDSMaker(dict):
             if vname not in mnames:
                 mdt += [(vname,version_fmt)]
 
+        if 'meds_version' in meta_data_in.dtype.names:
+            raise ValueError("don't put meds_version into "
+                             "the input meta data")
+        mdt += [('meds_version','S%d' % len(MEDS_VERSION))] 
         meta_data = zeros(nmeta, dtype=mdt)
 
         if meta_data_in is not None:
@@ -856,6 +867,8 @@ class MEDSMaker(dict):
         meta_data['numpy_version'] = numpy_version
         meta_data['esutil_version'] = esutil_version
         meta_data['fitsio_version'] = fitsio_version
+
+        meta_data['meds_version'] = MEDS_VERSION
 
         self.meta_data=meta_data
 
