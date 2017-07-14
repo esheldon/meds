@@ -23,6 +23,8 @@ try:
 except:
     have_esutil=False
 
+from . import defaults
+
 from .util import (
     make_wcs_positions,
     get_meds_output_struct,
@@ -40,7 +42,7 @@ from .defaults import default_config, default_values
 SUPPORTED_CUTOUT_TYPES = ['image','weight','seg','bmask']
 
 # meds file format version
-MEDS_VERSION='0.9.1'
+MEDS_FMT_VERSION='0.9.1'
 
 class MEDSMaker(dict):
     """
@@ -840,6 +842,7 @@ class MEDSMaker(dict):
         numpy_version=numpy.__version__
         esutil_version=eu.__version__
         fitsio_version=fitsio.__version__
+        meds_version=defaults.__version__
 
         if meta_data_in is not None:
             mnames=meta_data_in.dtype.names
@@ -850,15 +853,14 @@ class MEDSMaker(dict):
             mdt = []
             nmeta=1
 
-        for n in ['numpy','esutil','fitsio']:
-            vname = '%s_version' % n
-            if vname not in mnames:
-                mdt += [(vname,version_fmt)]
+        mdt += [
+            ('numpy_version','S%d' % len(numpy_version)),
+            ('esutil_version','S%d' % len(esutil_version)),
+            ('fitsio_version','S%d' % len(fitsio_version)),
+            ('meds_version','S%d' % len(meds_version)),
+            ('meds_fmt_version','S%d' % len(MEDS_FMT_VERSION)),
+        ]
 
-        if 'meds_version' in meta_data_in.dtype.names:
-            raise ValueError("don't put meds_version into "
-                             "the input meta data")
-        mdt += [('meds_version','S%d' % len(MEDS_VERSION))] 
         meta_data = zeros(nmeta, dtype=mdt)
 
         if meta_data_in is not None:
@@ -867,8 +869,8 @@ class MEDSMaker(dict):
         meta_data['numpy_version'] = numpy_version
         meta_data['esutil_version'] = esutil_version
         meta_data['fitsio_version'] = fitsio_version
-
-        meta_data['meds_version'] = MEDS_VERSION
+        meta_data['meds_version'] = meds_version
+        meta_data['meds_fmt_version'] = MEDS_FMT_VERSION
 
         self.meta_data=meta_data
 
