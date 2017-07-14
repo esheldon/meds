@@ -914,9 +914,22 @@ class MEDSMaker(dict):
         psf_npix = psf_size*psf_size
 
         psf_start_row = 0
-        for i in xrange(obj_data.size):
-            for j in xrange(obj_data['ncutout'][i]):
-                obj_data['psf_start_row'][i,j] = psf_start_row
+        for iobj in xrange(obj_data.size):
+            for icut in xrange(obj_data['ncutout'][i]):
+
+                row = obj_data['orig_row'][iobj, icut]
+                col = obj_data['orig_col'][iobj, icut]
+                file_id = obj_data['file_id'][iobj,icut]
+
+                p = psf_data[file_id]
+
+                cen = p.get_cen(row,col)
+                sigma = p.get_sigma(row,col)
+
+                obj_data['psf_cutout_row'][iobj,icut] = cen[0]
+                obj_data['psf_cutout_col'][iobj,icut] = cen[1]
+                obj_data['psf_sigma'][iobj,icut] = sigma
+                obj_data['psf_start_row'][iobj,icut] = psf_start_row
 
                 psf_start_row += psf_npix
                 total_psf_pixels += psf_npix
@@ -995,7 +1008,10 @@ class MEDSMaker(dict):
 
     def _get_psf_dtype(self, nmax):
         return [
-            ('psf_box_size','i8'),
+            ('psf_box_size','i4'),
+            ('psf_cutout_row','f8',nmax),
+            ('psf_cutout_col','f8',nmax),
+            ('psf_sigma','f4',nmax),
             ('psf_start_row','i8',nmax),
         ]
 
