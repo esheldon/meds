@@ -942,7 +942,10 @@ class MEDSMaker(dict):
 
                 pim = p.get_rec(row,col)
                 cen = p.get_center(row,col)
-                sigma = p.get_sigma(row,col)
+                try:
+                    sigma = p.get_sigma(row,col)
+                except:
+                    sigma = p.get_sigma()
 
                 if pim_shape is None:
                     pim_shape = pim.shape
