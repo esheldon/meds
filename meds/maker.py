@@ -932,7 +932,7 @@ class MEDSMaker(dict):
         psf_start_row = 0
         pim_shape=None
         for iobj in xrange(obj_data.size):
-            for icut in xrange(obj_data['ncutout'][i]):
+            for icut in xrange(obj_data['ncutout'][iobj]):
 
                 row = obj_data['orig_row'][iobj, icut]
                 col = obj_data['orig_col'][iobj, icut]
