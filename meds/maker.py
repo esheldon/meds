@@ -914,6 +914,7 @@ class MEDSMaker(dict):
         psf_data=self.psf_data
 
         # currently require all the same size
+        """
         for i,p in enumerate(psf_data):
             if i==0:
                 psf_size=p.get_shape()[0]
@@ -922,13 +923,14 @@ class MEDSMaker(dict):
                 if tsize != psf_size:
                     raise ValueError("currently all psfs "
                                      "must be same size")
-
         obj_data['psf_box_size'] = psf_size
+        """
         total_psf_pixels = 0
 
-        psf_npix = psf_size*psf_size
+        #psf_npix = psf_size*psf_size
 
         psf_start_row = 0
+        pim_shape=None
         for iobj in xrange(obj_data.size):
             for icut in xrange(obj_data['ncutout'][i]):
 
@@ -938,8 +940,20 @@ class MEDSMaker(dict):
 
                 p = psf_data[file_id]
 
-                cen = p.get_cen(row,col)
+                pim = p.get_rec(row,col)
+                cen = p.get_center(row,col)
                 sigma = p.get_sigma(row,col)
+
+                if pim_shape is None:
+                    pim_shape = pim.shape
+                    psf_npix = psf_shape[0]**2
+                    obj_data['psf_box_size'] = psf_shape[0]
+                else:
+                    tpim_shape = pim.shape
+                    if tpim_shape != pim_shape:
+                        raise ValueError("currently all psfs "
+                                         "must be same size")
+
 
                 obj_data['psf_cutout_row'][iobj,icut] = cen[0]
                 obj_data['psf_cutout_col'][iobj,icut] = cen[1]
