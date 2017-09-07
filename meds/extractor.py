@@ -197,7 +197,14 @@ class MEDSExtractor(object):
         cstart    = data['psf_start_row'][ifirst,0]
 
         ncutout_last = data['ncutout'][ilast]
-        npix_last = data['psf_box_size'][ilast]**2
+
+        if len(data['psf_box_size'].shape) > 1:
+            # in this case the box size is allowed to be different for
+            # different epochs
+            npix_last = data['psf_box_size'][ilast,ncutout_last-1]**2
+        else:
+            npix_last = data['psf_box_size'][ilast]**2
+
         cend     = data['psf_start_row'][ilast,ncutout_last-1] + npix_last
 
         return cstart, cend
