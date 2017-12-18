@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+from argparse import ArgumentParser
+import meds
+
+parser=ArgumentParser()
+parser.add_argument('file1',help='a MEDS file')
+parser.add_argument('file2',help='a MEDS file')
+parser.add_argument('--nrand',type=int, help='check a random subset')
+
+def main():
+    args = parser.parse_args()
+
+    c = meds.compare.Comparator(args.file1, args.file2)
+    c.go(nrand=args.nrand)
+ 
+main()

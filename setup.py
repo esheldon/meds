@@ -7,6 +7,7 @@ scripts=[
     'meds-extract-range',
     'meds-extract-catalog',
     'meds-view',
+    'meds-compare',
 ]
 scripts=[os.path.join('./scripts', s) for s in scripts]
 

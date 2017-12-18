@@ -14,3 +14,5 @@ from .maker import MEDSMaker
 
 from .extractor import MEDSExtractor, extract_range, extract_catalog
 from .number_extractor import MEDSNumberExtractor, extract_numbers
+
+from . import compare
