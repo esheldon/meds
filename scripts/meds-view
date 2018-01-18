@@ -1039,7 +1039,7 @@ class Viewer(dict):
             imlist = self.m.get_cutout_list(index, type=cutout_type)
 
         nonlinear=None
-        if cutout_type=='image':
+        if cutout_type in ['image']:
             nonlinear=0.1
             old_imlist=imlist
             imlist=[]
@@ -1055,6 +1055,18 @@ class Viewer(dict):
                 im += std
                 im *= (1.0/im.max())
 
+                imlist.append(im)
+
+        elif cutout_type in ['psf']:
+            nonlinear=0.1
+            old_imlist=imlist
+            imlist=[]
+            for im in old_imlist:
+                im = im.clip(min=1.0e-6)
+
+                im = numpy.log10(im)
+                im -= im.min()
+                im *= (1.0/im.max())
                 imlist.append(im)
 
         elif cutout_type in ['seg','bmask']:

@@ -204,7 +204,8 @@ def get_meds_output_dtype(ncutout_max, extra_fields=None):
 def get_image_info_struct(nimage, path_len,
                           image_id_len=None,
                           wcs_len=None,
-                          ext_len=None):
+                          ext_len=None,
+                          extra_dtype=None):
     """
     get the image info structure
 
@@ -229,6 +230,7 @@ def get_image_info_struct(nimage, path_len,
         image_id_len=image_id_len,
         wcs_len=wcs_len,
         ext_len=ext_len,
+        extra_dtype=extra_dtype,
     )
 
     data = numpy.zeros(nimage, dtype=dt)
@@ -240,7 +242,8 @@ def get_image_info_struct(nimage, path_len,
 def get_image_info_dtype(path_len,
                          image_id_len=None,
                          wcs_len=None,
-                         ext_len=None):
+                         ext_len=None,
+                         extra_dtype=None):
     """
     get the image_info dtype for the specified path string
     length and wcs string length
@@ -290,6 +293,9 @@ def get_image_info_dtype(path_len,
         dt += [
             ('wcs',wcs_fmt),
         ]
+
+    if extra_dtype is not None:
+        dt += extra_dtype
 
     return dt
 
