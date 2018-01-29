@@ -6,11 +6,17 @@ parser=ArgumentParser()
 parser.add_argument('file1',help='a MEDS file')
 parser.add_argument('file2',help='a MEDS file')
 parser.add_argument('--nrand',type=int, help='check a random subset')
+parser.add_argument('--id-name',default='id',
+                    help='name of id for matching, default "id"')
 
 def main():
     args = parser.parse_args()
 
-    c = meds.compare.Comparator(args.file1, args.file2)
+    c = meds.compare.Comparator(
+        args.file1,
+        args.file2,
+        id_name=args.id_name,
+    )
     c.go(nrand=args.nrand)
  
 main()

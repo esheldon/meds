@@ -8,9 +8,10 @@ import numpy
 from .meds import MEDS
 
 class Comparator(object):
-    def __init__(self, file1, file2):
+    def __init__(self, file1, file2, id_name='id'):
         self.m1 = MEDS(file1)
         self.m2 = MEDS(file2)
+        self.id_name = id_name
 
         self.image_rms_tol = 0.8
         self.weight_tol = 1.0e-4
@@ -45,7 +46,13 @@ class Comparator(object):
                 c2[n][self.ind2],
             )
             if not check:
-                raise ValueError("field %s does not match" % n)
+                import esutil as eu
+                #raise ValueError("field %s does not match" % n)
+                diff = (c1[n][self.ind1] - c2[n][self.ind2]).ravel()
+                rms = diff.std()
+                mn_clip, rms_clip = eu.stat.sigma_clip(diff,silent=True)
+                print("field %s does not match.  rms %g "
+                      "clipped: %g" % (n, rms,rms_clip))
 
     def compare_images(self, type, nrand=None):
         """
@@ -167,8 +174,8 @@ class Comparator(object):
         """
         import esutil as eu
         self.ind1, self.ind2 = eu.numpy_util.match(
-            self.m1['id'],
-            self.m2['id'],
+            self.m1[self.id_name],
+            self.m2[self.id_name],
         )
 
         if self.ind1.size == 0:
