@@ -454,7 +454,7 @@ class MEDSMaker(dict):
         impath=info[pkey][file_id].strip()
         ext = info[extkey][file_id]
 
-        if impath.lower() == 'none' or impath=='':
+        if impath.lower() == 'none' or len(impath)==0:
             im=None
         else:
             if isinstance(ext, str):
