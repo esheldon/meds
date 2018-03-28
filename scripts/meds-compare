@@ -8,14 +8,37 @@ parser.add_argument('file2',help='a MEDS file')
 parser.add_argument('--nrand',type=int, help='check a random subset')
 parser.add_argument('--id-name',default='id',
                     help='name of id for matching, default "id"')
+parser.add_argument('--no-nepoch',action='store_true',
+                    help="don't require same number of epochs")
+
+parser.add_argument(
+    '--image-rms-tol',
+    default=0.8,
+    type=float,
+    help=("what rms difference is considered OK, default 0.8. "
+          "You will generally need to figure out what makes "
+          "sense for your data"))
+
+
+parser.add_argument('--png-prefix',default=None,
+                    help=("save image comparisons in a png with this "
+                          "prefix") )
 
 def main():
     args = parser.parse_args()
+
+    if args.no_nepoch:
+        same_nepoch=False
+    else:
+        same_nepoch=True
 
     c = meds.compare.Comparator(
         args.file1,
         args.file2,
         id_name=args.id_name,
+        same_nepoch=same_nepoch,
+        image_rms_tol=args.image_rms_tol,
+        png_prefix=args.png_prefix,
     )
     c.go(nrand=args.nrand)
  
