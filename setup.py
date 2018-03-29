@@ -24,7 +24,7 @@ include_dirs=[numpy.get_include()]
 ext=Extension("meds._uberseg", sources, include_dirs=include_dirs)
 
 setup(name="meds", 
-      version="0.9.3",
+      version="0.9.4",
       description="Python and C libraries for reading MEDS files",
       license = "GNU GPLv3",
       author="Erin Scott Sheldon",
