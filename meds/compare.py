@@ -8,12 +8,21 @@ import numpy
 from .meds import MEDS
 
 class Comparator(object):
-    def __init__(self, file1, file2, id_name='id'):
+    def __init__(self,
+                 file1,
+                 file2,
+                 id_name='id',
+                 image_rms_tol=0.8,
+                 same_nepoch=True,
+                 png_prefix=False):
+
         self.m1 = MEDS(file1)
         self.m2 = MEDS(file2)
         self.id_name = id_name
+        self.require_same_nepoch=same_nepoch
+        self.png_prefix=png_prefix
 
-        self.image_rms_tol = 0.8
+        self.image_rms_tol = image_rms_tol
         self.weight_tol = 1.0e-4
 
     def go(self, nrand=None):
@@ -41,18 +50,21 @@ class Comparator(object):
             raise ValueError("cat names don't match")
 
         for n in c1.dtype.names:
-            check = numpy.allclose(
-                c1[n][self.ind1],
-                c2[n][self.ind2],
-            )
-            if not check:
-                import esutil as eu
-                #raise ValueError("field %s does not match" % n)
-                diff = (c1[n][self.ind1] - c2[n][self.ind2]).ravel()
-                rms = diff.std()
-                mn_clip, rms_clip = eu.stat.sigma_clip(diff,silent=True)
-                print("field %s does not match.  rms %g "
-                      "clipped: %g" % (n, rms,rms_clip))
+            try:
+                check = numpy.allclose(
+                    c1[n][self.ind1],
+                    c2[n][self.ind2],
+                )
+                if not check:
+                    import esutil as eu
+                    #raise ValueError("field %s does not match" % n)
+                    diff = (c1[n][self.ind1] - c2[n][self.ind2]).ravel()
+                    rms = diff.std()
+                    mn_clip, rms_clip = eu.stat.sigma_clip(diff,silent=True)
+                    print("field %s does not match.  rms %g "
+                          "clipped: %g" % (n, rms,rms_clip))
+            except ValueError as err:
+                print(err)
 
     def compare_images(self, type, nrand=None):
         """
@@ -73,6 +85,8 @@ class Comparator(object):
         else:
             ids = numpy.arange(self.ind1.size)
 
+        means=[]
+
         ntot = ids.size
         for icount, index in enumerate(ids):
             print("    %d/%d %d" % (icount+1,ntot,index))
@@ -90,11 +104,51 @@ class Comparator(object):
                 #    print("        compare to noise:",err)
 
                 if type=='image':
-                    self._compare_images(im1, im2)
+                    ok, mean, err, std = self._compare_images(im1, im2)
+                    means.append(mean)
                 elif type == 'weight':
                     self._compare_weights(im1, im2)
                 else:
                     self._compare_images_exact(im1, im2)
+
+            if type=='image' and self.png_prefix is not None:
+                import images
+                fname=self.png_prefix + '-imdiff-%06d-%03d.png' % (index, icut)
+                print("writing:",fname)
+                if ok:
+                    oks='OK'
+                else:
+                    oks='Not OK'
+
+                images.compare_images(
+                    im1,
+                    im2,
+                    dims=(1500,1500),
+                    #width=1500,
+                    #height=1500,
+                    title='rms: %.3g mean: %.3g +/- %.3g %s' % (std, mean, err, oks),
+                    file=fname,
+                )
+                #if 'q'==raw_input("hit a key: (q to quit)"):
+                #    stop
+
+        if type=='image':
+            import esutil as eu
+            print(len(means))
+            means = numpy.array(means)
+            mdiff = means.mean()
+            mdiff_err = means.std()/numpy.sqrt(means.size)
+            print("average mean diff: %g +/- %g" % (mdiff, mdiff_err))
+            mdiff, mdiff_std, mdiff_err = eu.stat.sigma_clip(means, get_err=True)
+            print("clipped average mean diff: %g +/- %g" % (mdiff, mdiff_err))
+
+            if self.png_prefix is not None:
+                import biggles
+                binsize=mdiff_std*0.1
+                fname=self.png_prefix + '-imdiff-means.png'
+                biggles.plot_hist(
+                    means, binsize=binsize, visible=False, file=fname,
+                )
 
     def _check_ncutout(self, i1, i2):
         """
@@ -102,11 +156,16 @@ class Comparator(object):
         """
         n1 = self.m1['ncutout'][i1] 
         n2 = self.m2['ncutout'][i2] 
-        if n1 != n2:
-            raise ValueError("ncutout disagrees for objects "
-                             "%d:%d %d:%d" % (i1,n1,i2,n2))
 
-        return n1
+        if not self.require_same_nepoch:
+            n = min(n1, n2)
+        else:
+            if n1 != n2:
+                raise ValueError("ncutout disagrees for objects "
+                                 "%d:%d %d:%d" % (i1,n1,i2,n2))
+            n=n1
+
+        return n
 
     def _compare_images(self, im1, im2):
         """
@@ -119,17 +178,17 @@ class Comparator(object):
                              "match: %s %s" % (im1.shape, im2.shape))
 
         diff = im1-im2
+        mean = diff.mean()
         std = diff.std()
+        err = std/numpy.sqrt( diff.size )
         if std > self.image_rms_tol:
             print("        rms %g greater than "
                   "tolerance %g" % (std,self.image_rms_tol))
+            ok=False
+        else:
+            ok=True
 
-            if False:
-                import images
-                images.compare_images(im1, im2, width=1500, height=1500)
-                if 'q'==raw_input("hit a key: (q to quit)"):
-                    stop
-
+        return ok, mean, err, std
 
     def _compare_weights(self, im1, im2):
         """
