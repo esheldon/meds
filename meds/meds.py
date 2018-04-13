@@ -212,7 +212,7 @@ class MEDS(object):
         """
 
         if type=='psf':
-            return self.get_psf(iobj,icut)
+            return self.get_psf(iobj,icutout)
 
         self._check_indices(iobj, icutout=icutout)
 
@@ -903,6 +903,8 @@ class MEDS(object):
             return "seg_cutouts"
         elif type=="bmask":
             return "bmask_cutouts"
+        elif type=="noise":
+            return "noise_cutouts"
         else:
             raise ValueError("bad cutout type '%s'" % type)
 

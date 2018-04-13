@@ -39,7 +39,7 @@ from .bounds import Bounds
 from .defaults import default_config, default_values
 
 
-SUPPORTED_CUTOUT_TYPES = ['image','weight','seg','bmask']
+SUPPORTED_CUTOUT_TYPES = ['image','weight','seg','bmask','noise']
 
 # meds file format version
 MEDS_FMT_VERSION='0.9.1'
