@@ -92,6 +92,13 @@ class MEDSCoaddMaker(maker.MEDSMaker):
         self._set_meta()
         self._set_psf_layout()
 
+    def _load_config(self, config):
+
+        super(MEDSCoaddMaker,self)._load_config(config)
+        for t in ['ormask','noise']:
+            if t not in self['cutout_types']:
+                self['cutout_types'] += [t]
+
 
     def write(self, filename, obj_range=None):
         """
@@ -259,13 +266,6 @@ class MEDSCoaddMaker(maker.MEDSMaker):
         self.total_psf_pixels = max_npixels_per*nobj
         # fake the data for later
         self.psf_data=1
-
-    def _set_extra_config(self):
-        """
-        set extra configuration parameters that are not user-controlled
-        """
-        super(MEDSCoaddMaker,self)._set_extra_config()
-        self['noise_cutout_extname']  = 'noise_cutouts'
 
     def _set_image_info(self):
         """

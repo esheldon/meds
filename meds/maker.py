@@ -1095,6 +1095,7 @@ class MEDSMaker(dict):
         self['seg_cutout_extname']     = 'seg_cutouts'
         self['bmask_cutout_extname']   = 'bmask_cutouts'
         self['ormask_cutout_extname']  = 'ormask_cutouts'
+        self['noise_cutout_extname']  = 'noise_cutouts'
 
     def _load_config(self, config):
         """
