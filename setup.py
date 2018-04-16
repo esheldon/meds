@@ -16,6 +16,7 @@ scripts=[
     'meds-extract-catalog',
     'meds-view',
     'meds-compare',
+    'meds-coadd',
 ]
 scripts=[os.path.join('./scripts', s) for s in scripts]
 

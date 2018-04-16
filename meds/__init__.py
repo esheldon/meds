@@ -12,6 +12,9 @@ from . import defaults
 from . import maker
 from .maker import MEDSMaker
 
+from . import coadd
+from .coadd import MEDSCoadder, MEDSCoaddMaker
+
 from .extractor import MEDSExtractor, extract_range, extract_catalog
 from .number_extractor import MEDSNumberExtractor, extract_numbers
 
