@@ -22,7 +22,7 @@ parser.add_argument('output_file',
 parser.add_argument('--obj-range',
                     help='range of objects to process, for testing')
 parser.add_argument('--make-plots',action='store_true',
-                    help='make plots of each epoch')
+                    help='make plots of each epoch and the coadd')
 
 def load_psfmap(fname):
     import psfex

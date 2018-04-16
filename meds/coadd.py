@@ -420,7 +420,6 @@ class MEDSCoadder(dict):
         import ngmix
 
         m=self.m
-        ii=m.get_image_info()
 
         make_plots=self.make_plots
 
@@ -469,8 +468,6 @@ class MEDSCoadder(dict):
             bmask=bmlist[i]
 
             file_id=m['file_id'][iobj, icut]
-            path=ii['image_path'][file_id]
-            key = extract_key(path)
             orig_row=m['orig_row'][iobj, icut]
             orig_col=m['orig_col'][iobj, icut]
 
@@ -536,23 +533,25 @@ class MEDSCoadder(dict):
             print("stamp_row: %.3f stamp_col: %.3f" % (jdict['row0'],jdict['col0']))
             """
 
-            # fake the psf obs for now
-            psf_obs=self._get_psf_obs(key, jacobian, meta, orig_row, orig_col)
-
             obs = ngmix.Observation(
                 im,
                 weight=wt,
                 bmask=bmask,
                 jacobian=jacobian,
                 meta=meta,
-                psf=psf_obs,
             )
+
+            obs.psf=self._get_psf_obs(
+                obs, file_id, meta, orig_row, orig_col,
+            )
+
             obs.noise = noise_image
             obs.seg=seg
 
             obs.meta['ninterp']=self._interp_bad_pixels(obs)
             if self.make_plots and obs.meta['ninterp'] > 0:
-                self._show_epoch(iobj,icut,obs.image,seg,obs.weight,obs.bmask,
+                self._show_epoch(iobj,icut,obs.image,seg,
+                                 obs.weight,obs.bmask,
                                  extra='interp')
             obslist.append(obs)
 
@@ -668,13 +667,21 @@ class MEDSCoadder(dict):
         return sides_bad
 
 
-    def _get_psf_obs(self, key, jac, meta, row, col):
+    def _get_psf_obs(self, obs, file_id, meta, row, col):
         """
+        psfex specific code here
+
         for psfex we need to add 0.5 to get an offset
         that is the same as used for the object
         """
         import ngmix
+        assert self['psf']['type']=='psfex',"only psfex for now"
+
         pmeta={}
+
+        ii=self.m.get_image_info()
+        path=ii['image_path'][file_id]
+        key = extract_key(path)
 
         rowget=row+0.5
         colget=col+0.5
@@ -683,7 +690,9 @@ class MEDSCoadder(dict):
         pcen = p.get_center(rowget, colget)
         ccen=(np.array(pim.shape)-1.0)/2.0
 
-        pjac = jac.copy()
+        # for psfex we assume the jacobian is the same, not
+        # quite right
+        pjac = obs.jacobian.copy()
         pjac.set_cen(row=pcen[0], col=pcen[1])
 
         pmeta['offset_pixels']=dict(
