@@ -69,8 +69,10 @@ class MEDSCoaddMaker(maker.MEDSMaker):
     Convert an existing MEDS file to a postage-stamp coadd
     MEDS file using the input coadder
     """
-    def __init__(self, config, coadder):
+    def __init__(self, config, coadder, tmpdir=None):
 
+
+        self.tmpdir=tmpdir
 
         self._load_config(config)
         self._set_extra_config()
@@ -89,6 +91,7 @@ class MEDSCoaddMaker(maker.MEDSMaker):
         self._set_image_info()
         self._set_meta()
         self._set_psf_layout()
+
 
     def write(self, filename, obj_range=None):
         """

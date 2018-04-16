@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import numpy
 import tempfile
+import subprocess
 
 DEFVAL = -9999
 IMAGE_INFO_TYPES = ['image','weight','seg','bmask','bkg']
@@ -379,3 +380,5 @@ def thetaphi_to_unitvecs_ruv(theta,phi):
     phat = numpy.array([-1.0*sinp,cosp,0.0]).T
 
     return rhat,phat,-1.0*that
+
+
