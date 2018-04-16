@@ -39,5 +39,7 @@ default_config = {
     'weight_dtype':'f4',
     'seg_dtype':'i4',
     'bmask_dtype':'i4',
+    'ormask_dtype':'i4',
+    'noise_dtype':'f4',
 }
 

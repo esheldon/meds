@@ -39,7 +39,14 @@ from .bounds import Bounds
 from .defaults import default_config, default_values
 
 
-SUPPORTED_CUTOUT_TYPES = ['image','weight','seg','bmask','noise']
+SUPPORTED_CUTOUT_TYPES = [
+    'image',
+    'weight',
+    'seg',
+    'bmask',
+    'ormask',
+    'noise',
+]
 
 # meds file format version
 MEDS_FMT_VERSION='0.9.1'
@@ -1079,14 +1086,15 @@ class MEDSMaker(dict):
         """
         set extra configuration parameters that are not user-controlled
         """
-        self['object_data_extname']  = 'object_data'
-        self['image_info_extname'] = 'image_info'
-        self['metadata_extname'] = 'metadata'
+        self['object_data_extname']    = 'object_data'
+        self['image_info_extname']     = 'image_info'
+        self['metadata_extname']       = 'metadata'
 
-        self['image_cutout_extname']  = 'image_cutouts'
-        self['weight_cutout_extname'] = 'weight_cutouts'
-        self['seg_cutout_extname']    = 'seg_cutouts'
-        self['bmask_cutout_extname']  = 'bmask_cutouts'
+        self['image_cutout_extname']   = 'image_cutouts'
+        self['weight_cutout_extname']  = 'weight_cutouts'
+        self['seg_cutout_extname']     = 'seg_cutouts'
+        self['bmask_cutout_extname']   = 'bmask_cutouts'
+        self['ormask_cutout_extname']  = 'ormask_cutouts'
 
     def _load_config(self, config):
         """

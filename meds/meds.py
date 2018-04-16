@@ -903,6 +903,8 @@ class MEDS(object):
             return "seg_cutouts"
         elif type=="bmask":
             return "bmask_cutouts"
+        elif type=="ormask":
+            return "ormask_cutouts"
         elif type=="noise":
             return "noise_cutouts"
         else:
