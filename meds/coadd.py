@@ -1,5 +1,7 @@
 """
 TODO
+    - Add EDGEBLEED to edge flags, totally rejecting
+    - adapt desmeds stuff to use finalcut only
     - consider not including edge cutouts in meds, or at least
       marking them somehow? Those pixels currently get zero weight.
     - tag versions of meds and psc
