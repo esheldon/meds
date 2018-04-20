@@ -371,13 +371,13 @@ class MEDSCoadder(dict):
         coadd_obs.bmask = bmask
         coadd_obs.ormask = ormask
 
-        # take seg map from first obs, which was
-        # interpolated from coadd
-        coadd_obs.seg = obslist[0].seg
+        coadd_obs.seg = self._get_interpolated_coadd_seg(iobj)
         if self.make_plots:
             original_coadd=self.m.get_cutout(iobj, 0)
             original_seg=self.m.get_cutout(iobj, 0,type='seg')
-            self._show_coadd(iobj, coadd_obs, original_coadd, original_seg)
+            original_wt=self.m.get_cutout(iobj, 0,type='weight')
+            self._show_coadd(iobj, coadd_obs,
+                             original_coadd, original_wt, original_seg)
 
         meta={
             'ncoadd':ncoadd,
@@ -385,6 +385,17 @@ class MEDSCoadder(dict):
         }
         coadd_obs.update_meta_data(meta)
         return coadd_obs, flags
+
+    def _get_interpolated_coadd_seg(self, iobj):
+        jmatrix = self._get_jacobian_matrix()
+        return self.m.interpolate_coadd_seg_image(iobj, jmatrix)
+
+    def _get_jacobian_matrix(self):
+        j=self.target_jacobian
+        return np.matrix(
+            [ [j.dudrow, j.dudcol],
+              [j.dvdrow, j.dvdcol], ]
+        )
 
     def _set_config(self, config):
         self.update(config)
@@ -412,12 +423,18 @@ class MEDSCoadder(dict):
         import ngmix
         # center doesn't matter
 
+        w,= np.where(self.m['ncutout'] > 1)
+        dudrow = np.median(self.m['dudrow'][w,1])
+        dudcol = np.median(self.m['dudcol'][w,1])
+        dvdrow = np.median(self.m['dvdrow'][w,1])
+        dvdcol = np.median(self.m['dvdcol'][w,1])
+
         self.target_jacobian=ngmix.Jacobian(
             row=15, col=15,
-            dudrow=-0.263,
-            dudcol=0.0,
-            dvdrow=0.0,
-            dvdcol=-0.263,
+            dudrow=dudrow,
+            dudcol=dudcol,
+            dvdrow=dvdrow,
+            dvdcol=dvdcol,
         )
 
 
@@ -505,15 +522,12 @@ class MEDSCoadder(dict):
                 imflags[i] |= CUTOUT_FULL_EDGE_MASKED
                 continue
 
-
-            w=np.where(wt > 0.0)
+            wt_logic = wt > 0.0
+            w=np.where(wt_logic)
             if w[0].size == 0:
                 print("    all weight is zero")
                 imflags[i] |= CUTOUT_ALL_WEIGHT_ZERO
                 continue
-
-            err_sigma = np.sqrt( 1.0/np.median( wt[w] ) )
-            noise_image = self.rng.normal(scale=err_sigma, size=im.shape)
 
             jdict = m.get_jacobian(iobj, icut)
             jacobian = ngmix.Jacobian(
@@ -550,10 +564,12 @@ class MEDSCoadder(dict):
                 obs, file_id, meta, orig_row, orig_col,
             )
 
-            obs.noise = noise_image
             obs.seg=seg
 
+            # interpolate im, weight, and a noise map
+            # .noise attribute is added
             obs.meta['ninterp']=self._interp_bad_pixels(obs)
+
             if self.make_plots and obs.meta['ninterp'] > 0:
                 self._show_epoch(iobj,icut,obs.image,seg,
                                  obs.weight,obs.bmask,
@@ -684,6 +700,8 @@ class MEDSCoadder(dict):
     def _interp_bad_pixels(self, obs):
         """
         interpolate flagged pixels
+
+        add a noise image that is also interpolated, if needed
         """
 
         iconf=self['interp']
@@ -696,12 +714,13 @@ class MEDSCoadder(dict):
             obs.bmask = np.zeros(im.shape, dtype='i4')
 
         bmask = obs.bmask
-        noise = obs.noise
 
         bmravel = bmask.ravel()
         wtravel = weight.ravel()
 
-        bad_logic = (wtravel==0.0)
+        wt_bad_logic = (wtravel <= 0.0)
+        bad_logic = wt_bad_logic.copy()
+
         if self.bad_flags is not None:
             bad_logic = bad_logic | ( (bmravel & self.bad_flags) != 0 )
 
@@ -723,18 +742,38 @@ class MEDSCoadder(dict):
             wgood, = np.where(bad_logic == False)
 
             im_interp = self._do_interp(yx, im, wgood, wbad)
-            noise_interp = self._do_interp(yx, noise, wgood, wbad)
+            wt_interp = self._do_interp(yx, weight, wgood, wbad)
+            assert np.all( wt_interp > 0 )
 
-            obs.image = im_interp
-            obs.noise = noise_interp
+            tmp_noise = self._make_noise_image(wt_interp)
+
+            noise_interp = self._do_interp(yx, tmp_noise, wgood, wbad)
+
+            obs.image  = im_interp
+            obs.weight = wt_interp
+            obs.noise  = noise_interp
 
             # for now set bmask to zero in case downstream is avoiding it
             #bmask[:,:]=0
 
             # maybe want to interpolate weight map too in real data
-            obs.weight[:,:] = obs.weight.max()
+            #obs.weight[:,:] = obs.weight.max()
+        else:
+            obs.noise = self._make_noise_image(weight)
         
         return wbad.size
+
+    def _make_noise_image(self, weight):
+        """
+        create a noise image based on the input weight map
+        """
+
+        err_image = np.sqrt( 1.0/weight )
+        noise_image = self.rng.normal(size=weight.shape)
+        noise_image *= err_image
+
+        return noise_image
+
 
     def _do_interp(self, yx, im, wgood, wbad):
         import scipy.interpolate
@@ -762,7 +801,7 @@ class MEDSCoadder(dict):
 
         tab=biggles.Table(2,2,aspect_ratio=1.0)
 
-        tab[0,0] = images.view(im, nonlinear=0.1, title='im', show=False)
+        tab[0,0] = images.view(im, title='im', show=False)
         tab[0,1] = images.view(seg, title='seg', show=False)
         tab[1,0] = images.view(wt, title='weight', show=False)
         tab[1,1] = images.view(bmask, title='bmask', show=False)
@@ -787,33 +826,53 @@ class MEDSCoadder(dict):
 
         #tab.show()
         print("    writing:",fname)
-        tab.write_img(800,800,fname)
+        tab.write_img(1500,1500,fname)
 
-    def _show_coadd(self, iobj, obs, original_coadd, original_seg):
+    def _show_coadd(self, iobj, obs, original_coadd, original_wt, original_seg):
         import biggles
         import images
 
-        tab=biggles.Table(2,3,aspect_ratio=2.0/3.0)
+        tab=biggles.Table(3,3,aspect_ratio=1.0)
 
         nl=None
-        #tab[0,0] = images.view(obs.image, nonlinear=nl, title='coadd', show=False)
         tab[0,0] = images.view(
             np.rot90( obs.image.transpose(),k=2),
+            #obs.image,
             nonlinear=nl,
             title='coadd (trans/rot)',
             show=False,
         )
-        tab[0,1] = images.view(original_coadd, nonlinear=nl, title='original coadd', show=False)
-        tab[0,2] = images.view(obs.noise, title='noise', show=False)
+        tab[0,1] = images.view(original_coadd, nonlinear=nl, title='orig coadd', show=False)
+
+        diff = np.rot90( obs.image.transpose(),k=2) - original_coadd
+        tab[0,2] = images.view(diff, title='diff', show=False)
+
+        cmin,cmax = obs.weight.min(), obs.weight.max()
+        tab[1,0] = images.view(
+            np.rot90( obs.weight.transpose(),k=2),
+            #obs.weight,
+            nonlinear=nl,
+            title='weight (trans/rot) minmax: %.3g/%.3g' % (cmin,cmax),
+            show=False,
+        )
+        cmin,cmax = original_wt.min(), original_wt.max()
+        tab[1,1] = images.view(original_wt,
+                               nonlinear=nl,
+                               title='orig weight minmax: %.3g/%.3g' % (cmin,cmax),
+                               show=False)
+
+        tab[1,2] = images.view(obs.noise, title='noise', show=False)
 
         #tab[0,2] = images.view(obs.seg, title='seg', show=False)
-        tab[1,0] = images.view(
+        tab[2,0] = images.view(
             np.rot90( obs.seg.transpose(),k=2),
+            #obs.seg,
             title='seg (trans/rot)',
             show=False,
         )
-        tab[1,1] = images.view(original_seg, title='original seg', show=False)
-        tab[1,2] = images.view(obs.psf.image, title='psf', show=False)
+        tab[2,1] = images.view(original_seg, title='orig seg', show=False)
+
+        tab[2,2] = images.view(obs.psf.image, title='coadded psf', show=False)
         
         d='plots'
         if not os.path.exists(d):
@@ -833,6 +892,6 @@ class MEDSCoadder(dict):
 
         #tab.show()
         print("    writing:",fname)
-        tab.write_img(800,800,fname)
+        tab.write_img(1500,1500,fname)
 
 
