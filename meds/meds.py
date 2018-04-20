@@ -614,14 +614,38 @@ class MEDS(object):
         if icutout==0:
             return coadd_seg
 
+        jmatrix = self.get_jacobian_matrix(iobj, icutout)
+        cen = self.get_cutout_rowcol(iobj, icutout)
+
+        return self.interpolate_coadd_seg_image(
+            iobj,
+            jmatrix,
+            cen=cen,
+        )
+
+    def interpolate_coadd_seg_image(self, iobj, jmatrix, cen=None):
+        """
+        interpolate the coadd segmentation map onto the SE image frame
+
+        parameters
+        ----------
+        iobj:
+            Index of the object
+        jmatrix: matrix
+            The jacobian matrix for the image
+        """
+
+        coadd_seg = self.get_cutout(iobj, 0, type='seg')
+
         seg = 0*coadd_seg.copy()
 
+        if cen is None:
+            cen = (numpy.array(seg.shape)-1.0)/2.0
 
-        se_jacob=self.get_jacobian_matrix(iobj, icutout)
+        rowcen, colcen = cen
+
         coadd_jacob=self.get_jacobian_matrix(iobj, 0)
-
         coadd_rowcen, coadd_colcen = self.get_cutout_rowcol(iobj, 0)
-        rowcen, colcen = self.get_cutout_rowcol(iobj, icutout)
 
         # rows in SE seg mape
         rows,cols=numpy.mgrid[0:seg.shape[0], 0:seg.shape[1]]
@@ -632,8 +656,8 @@ class MEDS(object):
         cjinv = coadd_jacob.getI()
 
         # convert pixel coords in SE cutout to u,v
-        u = rowsrel*se_jacob[0,0] + colsrel*se_jacob[0,1]
-        v = rowsrel*se_jacob[1,0] + colsrel*se_jacob[1,1]
+        u = rowsrel*jmatrix[0,0] + colsrel*jmatrix[0,1]
+        v = rowsrel*jmatrix[1,0] + colsrel*jmatrix[1,1]
 
         # now convert into pixels for coadd
         crow = coadd_rowcen + u*cjinv[0,0] + v*cjinv[0,1]
@@ -649,6 +673,7 @@ class MEDS(object):
         seg[rows, cols] = coadd_seg[crow, ccol]
 
         return seg
+
 
     def get_source_info(self, iobj, icutout):
         """
