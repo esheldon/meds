@@ -175,7 +175,7 @@ class MEDSCoaddMaker(maker.MEDSMaker):
             d['psf_cutout_row'][iobj,icut] = pj.row0
             d['psf_cutout_col'][iobj,icut] = pj.col0
 
-            for cutout_type in self['cutout_types']:
+            for cutout_type in self['cutout_types']+['psf']:
                 self._write_cutout(
                     iobj,
                     icut,
