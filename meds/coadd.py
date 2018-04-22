@@ -718,8 +718,7 @@ class MEDSCoadder(dict):
         bmravel = bmask.ravel()
         wtravel = weight.ravel()
 
-        wt_bad_logic = (wtravel <= 0.0)
-        bad_logic = wt_bad_logic.copy()
+        bad_logic = (wtravel <= 0.0)
 
         if self.bad_flags is not None:
             bad_logic = bad_logic | ( (bmravel & self.bad_flags) != 0 )
@@ -741,23 +740,20 @@ class MEDSCoadder(dict):
 
             wgood, = np.where(bad_logic == False)
 
-            im_interp = self._do_interp(yx, im, wgood, wbad)
-            wt_interp = self._do_interp(yx, weight, wgood, wbad)
-            assert np.all( wt_interp > 0 )
+            # make this a config option?
+            medwt=np.median(wtravel[wgood])
+            wtravel[wbad] = medwt
 
-            tmp_noise = self._make_noise_image(wt_interp)
+            im_interp = self._do_interp(yx, im, wgood, wbad)
+
+            # still reference to ravelled one, should be ok
+            tmp_noise = self._make_noise_image(weight)
 
             noise_interp = self._do_interp(yx, tmp_noise, wgood, wbad)
 
             obs.image  = im_interp
-            obs.weight = wt_interp
             obs.noise  = noise_interp
 
-            # for now set bmask to zero in case downstream is avoiding it
-            #bmask[:,:]=0
-
-            # maybe want to interpolate weight map too in real data
-            #obs.weight[:,:] = obs.weight.max()
         else:
             obs.noise = self._make_noise_image(weight)
         
