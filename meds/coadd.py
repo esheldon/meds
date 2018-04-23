@@ -259,7 +259,9 @@ class MEDSCoaddMaker(maker.MEDSMaker):
         """
         set the box sizes and start row for each psf image
         """
+        raise NotImplementedError("implement psf specifics in a sub class")
 
+        '''
         obj_data = self.obj_data
 
         max_psf_size = self['max_psf_size']
@@ -268,6 +270,7 @@ class MEDSCoaddMaker(maker.MEDSMaker):
         self.total_psf_pixels = max_npixels_per*nobj
         # fake the data for later
         self.psf_data=1
+        '''
 
     def _set_image_info(self):
         """
