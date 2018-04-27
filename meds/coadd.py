@@ -222,7 +222,7 @@ class MEDSCoaddMaker(maker.MEDSMaker):
         nmax=2
 
         # subtract 1 for coadd
-        nmax_orig=self.m['ncutout'].max()-1
+        nmax_orig=max(self.m['ncutout'].max()-1,2)
         extra_fields=[
             ('number','i8'),
             ('psf_box_size','i4'),
@@ -404,6 +404,8 @@ class MEDSCoadder(dict):
         self.update(config)
 
         self['coadd'] = self.get('coadd',{})
+
+        self['dither_psfs'] = self['coadd'].pop('dither_psfs',True)
 
 
     def _set_bad_flags(self):
