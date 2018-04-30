@@ -252,6 +252,16 @@ class MEDSCoaddMaker(maker.MEDSMaker):
         for f in copy_fields:
             d[f] = cat[f]
 
+        # just copy coadd
+        coadd_fields = [
+            'orig_row','orig_col',
+            # needed by mof
+            'orig_start_row','orig_start_col',
+        ]
+        for f in coadd_fields:
+            d[f][:,0] = cat[f][:,0]
+
+
         self.obj_data=d
         self.ncutout_max=nmax
 
@@ -276,7 +286,8 @@ class MEDSCoaddMaker(maker.MEDSMaker):
         """
         fake image info
         """
-        self.image_info=util.get_image_info_struct(1, 10)
+        #self.image_info=util.get_image_info_struct(1, 10)
+        self.image_info=self.m.get_image_info()[0:1]
 
     def _set_meta(self):
         """
