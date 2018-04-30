@@ -99,6 +99,39 @@ class MEDSNumberExtractor(object):
         tup_ranges = [tuple(rng) for rng in ranges]
         return tup_ranges
 
+    def _get_psf_row_ranges(self, data):
+        """
+        get pixel range for this subset
+        """
+        w,=numpy.where( data['ncutout'] > 0)
+        if w.size==0:
+            return [(-1, -1)]
+
+        ranges = []
+        start = True
+        for w in xrange(len(data)):
+            if data['ncutout'][w] > 0:                
+                if start:
+                    ranges.append([data['psf_start_row'][w,0], \
+                                   data['psf_start_row'][w,0]+data['psf_box_size'][w]**2 * data['ncutout'][w]])
+                    start = False
+                else:
+                    if data['psf_start_row'][w,0] != ranges[-1][-1]:
+                        #add new if not back to back
+                        ranges.append([data['psf_start_row'][w,0], \
+                                       data['psf_start_row'][w,0]+data['psf_box_size'][w]**2 * data['ncutout'][w]])
+                    else:
+                        #just expand range of pixels if back to back 
+                        ranges[-1][-1] = data['psf_start_row'][w,0]+data['psf_box_size'][w]**2 * data['ncutout'][w]
+
+        if len(ranges) == 0:
+            ranges.append([-1,-1])
+        
+        #send back as list of tuples
+        tup_ranges = [tuple(rng) for rng in ranges]
+        return tup_ranges
+
+
     def _get_data_from_ranges(self, ranges, data):
         out_data = []
         dtype=None
@@ -131,6 +164,19 @@ class MEDSNumberExtractor(object):
                             obj_data['start_row'][i,j] = loc
                             loc += obj_data['box_size'][i]**2
 
+                if 'psf' in infits:
+                    psf_ranges = self._get_psf_row_ranges(obj_data)
+                    if psf_ranges[0][0] != -1:
+                        # adjust to new start. If ranges[0][0]==-1 will all be -9999
+                        loc = 0
+                        for i in xrange(len(obj_data)):
+                            for j in xrange(obj_data['ncutout'][i]):
+                                obj_data['psf_start_row'][i,j] = loc
+                                loc += obj_data['psf_box_size'][i]**2
+
+
+                
+                from esutil.numpy_util import ahelp
                 outfits.write(obj_data, extname='object_data')
 
                 #
@@ -163,6 +209,12 @@ class MEDSNumberExtractor(object):
                     bmask_cutouts = self._get_data_from_ranges(ranges, infits['bmask_cutouts'])
                     outfits.write(bmask_cutouts, extname='bmask_cutouts')
                     del bmask_cutouts
+
+                    if 'psf' in infits:
+                        psf_cutouts = self._get_data_from_ranges(psf_ranges, infits['psf'])
+                        outfits.write(psf_cutouts, extname='psf')
+                        del psf_cutouts
+
 
     def _write_dummy(self, outfits):
         print('no objects with cutouts, writing dummy data')
