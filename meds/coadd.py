@@ -431,7 +431,7 @@ class MEDSCoadder(dict):
         if 'edge_flags' not in self:
             edge_flags=None
         else:
-            edge_flags = sum(self['bmask_flags'])
+            edge_flags = sum(self['edge_flags'])
 
         self.edge_flags=edge_flags
 
