@@ -61,6 +61,7 @@ class MEDSExtractor(object):
             'seg_cutouts',
             'bmask_cutouts',
             'psf',
+            'noise',
         ]
         self._check_inputs()
         self._extract()
@@ -136,6 +137,11 @@ class MEDSExtractor(object):
                         bmask_cutouts=infits['bmask_cutouts'][cstart:cend]
                         outfits.write(bmask_cutouts, extname='bmask_cutouts')
                         del bmask_cutouts
+
+                    if 'noise_cutouts' in infits:
+                        cutouts=infits['noise_cutouts'][cstart:cend]
+                        outfits.write(cutouts, extname='noise_cutouts')
+                        del cutouts
 
                     if 'psf' in infits:
                         psfs=infits['psf'][psf_cstart:psf_cend]
