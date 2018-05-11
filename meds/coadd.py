@@ -562,6 +562,20 @@ class MEDSCoadder(dict):
             )
             meta={'offset_pixels':offset_pixels}
 
+            if False:
+                import ngmix
+                fac=jacobian.get_scale()**2
+                T = 4.0*fac
+                gmpsf = ngmix.GMixModel([0., 0., 0., 0.0, T, 1.0],"gauss")
+                gm0 = ngmix.GMixModel([0., 0., 0.025, 0.0, T, 1.0],"gauss")
+                gm = gm0.convolve(gmpsf)
+                im = gm.make_image(im.shape, jacobian=jacobian)
+
+                noise = 0.0001
+                im += self.rng.normal(scale=noise, size=im.shape)
+                wt = wt*0 + 1.0/noise**2
+
+
             """
             print("image ccen:",ccen)
             print("orig_row: %.3f orig_col: %.3f" % (orig_row, orig_col))
