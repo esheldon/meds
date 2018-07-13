@@ -938,7 +938,8 @@ def expand(image, new_dims, padval=0, verbose=False):
 
 class Viewer(dict):
     def __init__(self, filename, combine=False, cutout_types=None):
-
+        import biggles
+        biggles.configure( 'default', 'fontsize_min', 1.2)
         self.filename=filename
         self.combine=combine
         self.m=meds.MEDS(filename)
@@ -1038,6 +1039,8 @@ class Viewer(dict):
         else:
             imlist = self.m.get_cutout_list(index, type=cutout_type)
 
+        metitles=[str(i) for i in self.m['file_id'][index,1:]]
+
         nonlinear=None
         if cutout_type in ['image']:
             nonlinear=0.1
@@ -1078,8 +1081,9 @@ class Viewer(dict):
 
                 imlist.append(im)
 
-        titles=['']*len(imlist)
-        titles[0] = 'coadd'
+        #titles=['']*len(imlist)
+        #titles[0] = 'coadd'
+        titles=['coadd'] + metitles
         kw['titles']=titles
         plt=view_mosaic(imlist, combine=self.combine, **kw)
         return plt
