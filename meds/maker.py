@@ -551,7 +551,7 @@ class MEDSMaker(dict):
                           % (numpy.min(pos['zcol'][q_rc]),numpy.max(pos['zcol'][q_rc]-bnds.colmax)))
 
                 rn = numpy.clip(pos['zrow'][q_rc], bnds.rowmin, bnds.rowmax)
-                cn = numpy.clip(pos['zcol'][q_rc], bnds.rowmin, bnds.rowmax)
+                cn = numpy.clip(pos['zcol'][q_rc], bnds.colmin, bnds.colmax)
                 num_forced = len(numpy.where((rn != pos['zrow'][q_rc]) | (cn != pos['zcol'][q_rc]))[0])
                 pos['zrow'][q_rc] = rn
                 pos['zcol'][q_rc] = cn
