@@ -327,7 +327,7 @@ class MEDS(object):
         ncut=self['ncutout'][iobj]
         return [self.get_psf(iobj, icut) for icut in xrange(ncut)]
 
-    def get_cweight_cutout(self, iobj, icutout):
+    def get_cweight_cutout(self, iobj, icutout, restrict_to_seg=False):
         """
         Composite the weight and seg maps, interpolating seg map from the coadd
 
@@ -346,7 +346,8 @@ class MEDS(object):
         """
         wt=self.get_cutout(iobj, icutout, type='weight')
         coadd_seg=self.get_cutout(iobj, 0, type='seg')
-        cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg)
+        cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg,
+                                       restrict_to_seg=restrict_to_seg)
         return cwt
 
     def get_cweight_mosaic(self, iobj):
@@ -374,7 +375,8 @@ class MEDS(object):
         wlist = split_mosaic(wtmosaic)
 
         for icutout,wt in enumerate(wlist):
-            cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg)
+            cwt=self._make_composite_image(iobj, icutout, wt, coadd_seg,
+                                           restrict_to_seg=restrict_to_seg)
             wt[:,:] = cwt[:,:]
 
         return wtmosaic
@@ -856,7 +858,7 @@ class MEDS(object):
 
         return row, col
 
-    def _make_composite_image(self, iobj, icutout, im, coadd_seg):
+    def _make_composite_image(self, iobj, icutout, im, coadd_seg, restrict_to_seg=False):
         """
         Internal routine to composite the coadd seg onto another image,
         meaning set zero outside the region
@@ -874,7 +876,12 @@ class MEDS(object):
 
         if icutout==0:
             # this cutout is the coadd
-            w=numpy.where( (coadd_seg != segid) & (coadd_seg != 0) )
+            logic=(coadd_seg != segid)
+            if not restrict_to_seg:
+                logic = logic & (coadd_seg != 0)
+
+            #w=numpy.where( (coadd_seg != segid) & (coadd_seg != 0) )
+            w=numpy.where(logic)
             if w[0].size != 0:
                 cim[w] = 0.0
         else:
@@ -912,7 +919,14 @@ class MEDS(object):
             # clipping makes the notation easier
             crow = crow.clip(0,coadd_seg.shape[0]-1)
             ccol = ccol.clip(0,coadd_seg.shape[1]-1)
-            wbad=numpy.where( (coadd_seg[crow,ccol] != segid ) & (coadd_seg[crow,ccol] != 0) )
+
+            logic = (coadd_seg[crow,ccol] != segid )
+            if not restrict_to_seg:
+                logic = logic & (coadd_seg[crow,ccol] != 0)
+
+            #wbad=numpy.where( (coadd_seg[crow,ccol] != segid ) & (coadd_seg[crow,ccol] != 0) )
+            wbad=numpy.where(logic)
+
             if wbad[0].size != 0:
                 cim[wbad] = 0
 
