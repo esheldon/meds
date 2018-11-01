@@ -619,13 +619,13 @@ class MEDS(object):
         jmatrix = self.get_jacobian_matrix(iobj, icutout)
         cen = self.get_cutout_rowcol(iobj, icutout)
 
-        return self.interpolate_coadd_seg_image(
+        return self._interpolate_coadd_seg_image(
             iobj,
             jmatrix,
             cen=cen,
         )
 
-    def interpolate_coadd_seg_image(self, iobj, jmatrix, cen=None):
+    def _interpolate_coadd_seg_image(self, iobj, jmatrix, cen=None):
         """
         interpolate the coadd segmentation map onto the SE image frame
 
