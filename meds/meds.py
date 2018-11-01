@@ -350,7 +350,7 @@ class MEDS(object):
                                        restrict_to_seg=restrict_to_seg)
         return cwt
 
-    def get_cweight_mosaic(self, iobj):
+    def get_cweight_mosaic(self, iobj, restrict_to_seg=False):
         """
         Composite the weight and seg maps, interpolating seg map from the coadd
 
