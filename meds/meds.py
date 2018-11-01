@@ -81,8 +81,6 @@ class MEDS(object):
 
     get_source_path(iobj, icutout)
         Get the source filename associated with the indicated cutout
-    get_sky_path(iobj, icutout)
-        Get the source sky filename associated with the indicated cutout
     get_source_info(iobj, icutout)
         Get all info about the source images
     get_cat()
@@ -710,26 +708,6 @@ class MEDS(object):
 
         info=self.get_source_info(iobj, icutout)
         return info['image_path']
-
-    def get_sky_path(self, iobj, icutout):
-        """
-        Get the source filename associated with the indicated cutout
-
-        parameters
-        ----------
-        iobj:
-            Index of the object
-        icutout:
-            Index of the cutout for this object.
-
-        returns
-        -------
-        The filename
-        """
-
-        info=self.get_source_info(iobj, icutout)
-        return info['sky_path']
-
 
     def get_cat(self):
         """
