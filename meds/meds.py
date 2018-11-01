@@ -90,8 +90,6 @@ class MEDS(object):
         Get the full source file information for the indicated cutout.
     get_source_path(iobj, icutout)
         Get the source filename associated with the indicated cutout.
-    get_sky_path(iobj, icutout)
-        Get the source filename associated with the indicated cutout.
     get_cat()
         Get the catalog.
     get_image_info()
@@ -736,25 +734,6 @@ class MEDS(object):
 
         info = self.get_source_info(iobj, icutout)
         return info['image_path']
-
-    def get_bkg_path(self, iobj, icutout):
-        """Get the source filename associated with the indicated cutout.
-
-        Parameters
-        ----------
-        iobj : int
-            Index of the object
-        icutout : int
-            Index of the cutout for this object.
-
-        Returns
-        -------
-        path : str
-            The filename of the background image.
-        """
-
-        info = self.get_source_info(iobj, icutout)
-        return info['bkg_path']
 
     def get_cat(self):
         """Get the catalog.
