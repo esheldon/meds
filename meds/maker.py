@@ -607,8 +607,8 @@ class MEDSMaker(dict):
 
             # do jacobian, in original, not-offset coords
             # note q_rc since pos was created using obj_data[q]
-            jacob = wcs.get_jacobian(pos['wcs_row'][q_rc],
-                                     pos['wcs_col'][q_rc])
+            jacob = wcs.get_jacobian(pos['wcs_col'][q_rc],
+                                     pos['wcs_row'][q_rc])
 
             # jacob is a tuple of arrays
             obj_data['dudcol'][q,icut] = jacob[0]
