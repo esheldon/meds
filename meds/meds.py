@@ -82,6 +82,9 @@ class MEDS(object):
     get_cseg_cutout_list(iobj)
         Interpolate the coadd seg onto the planes of the cutouts.
         Get a list of all seg cutouts.
+    get_cseg_weight(iobj, icutout, use_canonical_cen=False)
+        Get the largest circularly masked weight map that does not
+        interesect any other objects seg map.
     interpolate_coadd_seg_mosaic(iobj)
         Get a mosaic of interpolated seg maps.
     interpolate_coadd_seg(iobj, icutout)
@@ -593,6 +596,67 @@ class MEDS(object):
         # shares underlying storage
         seglist = split_mosaic(segmosaic)
         return seglist
+
+    def get_cseg_weight(self, iobj, icutout, use_canonical_cen=False):
+        """Get the largest circularly masked weight map that does not
+        interesect any other objects seg map.
+
+        If there are no other objects in the scene, the regular weight
+        map is returned.
+
+        Parameters
+        ----------
+        iobj : int
+            Index of the object.
+        icutout : int
+            Index of the cutout for this object.
+        use_canonical_cen : bool, optional
+            If `True`, use the canonical center of the image,
+            (# of pixels - 1)/2, to compute the circular mask. The default of
+            `False` uses the center recorded in the MEDS object data.
+
+        Returns
+        -------
+        weight : np.array
+            The masked weight map.
+        """
+        seg = self.get_cutout(iobj, icutout, type='seg')
+        weight = self.get_cutout(iobj, icutout, type='weight')
+        number = self['number'][iobj]
+
+        wother = numpy.where((seg != 0) & (seg != number))
+        if wother[0].size == 0:
+            # no other objects in the stamp
+            return weight
+
+        if use_canonical_cen:
+            row, col = (numpy.array(weight.shape)-1.0) / 2.0
+        else:
+            row = self['cutout_row'][iobj, icutout]
+            col = self['cutout_col'][iobj, icutout]
+
+        rows, cols = numpy.mgrid[
+            0:weight.shape[0],
+            0:weight.shape[1],
+        ]
+
+        rows = rows.astype('f8')
+        cols = cols.astype('f8')
+
+        rows -= row
+        cols -= col
+
+        r2 = rows**2 + cols**2
+
+        minr2 = r2[wother].min()
+
+        # now set the weight to zero for radii larger than that
+        wkeep = numpy.where(r2 < minr2)
+        new_weight = numpy.zeros(weight.shape)
+        if wkeep[0].size > 0:
+            new_weight[wkeep] = weight[wkeep]
+
+        return new_weight
 
     def interpolate_coadd_seg_mosaic(self, iobj):
         """Get a mosaic of interpolated seg maps.
