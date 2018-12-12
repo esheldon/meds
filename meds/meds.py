@@ -307,17 +307,38 @@ class MEDS(object):
         self._check_indices(iobj, icutout=icutout)
 
         cat = self._cat
-        if len(cat['psf_box_size'].shape) > 1:
-            box_size = self._cat['psf_box_size'][iobj, icutout]
-        else:
-            box_size = self._cat['psf_box_size'][iobj]
+        shape = self._get_psf_shape(iobj, icutout)
+        npix = shape[0]*shape[1]
 
         start_row = self._cat['psf_start_row'][iobj, icutout]
-        row_end = start_row + box_size*box_size
+        row_end = start_row + npix
 
         imflat = self._fits['psf'][start_row:row_end]
-        im = imflat.reshape(box_size, box_size)
+        im = imflat.reshape(shape)
         return im
+
+    def _get_psf_shape(self, iobj, icutout):
+        cat = self._cat
+        if 'psf_row_size' in cat.dtype.names:
+            if len(cat['psf_row_size'].shape) > 1:
+                shape = (
+                    cat['psf_row_size'][iobj,icutout],
+                    cat['psf_col_size'][iobj,icutout],
+                )
+            else:
+                shape = (
+                    cat['psf_row_size'][iobj],
+                    cat['psf_col_size'][iobj],
+                )
+        else:
+            if len(cat['psf_box_size'].shape) > 1:
+                box_size = self._cat['psf_box_size'][iobj, icutout]
+            else:
+                box_size = self._cat['psf_box_size'][iobj]
+
+            shape = (box_size, box_size)
+
+        return shape
 
     def get_psf_list(self, iobj):
         """Get a list of psf images.

@@ -272,14 +272,26 @@ class MEDSMaker(dict):
         orow_box, row_box = self._get_clipped_boxes(dims[0],orow,bsize)
         ocol_box, col_box = self._get_clipped_boxes(dims[1],ocol,bsize)
 
-        read_im = im_data[orow_box[0]:orow_box[1],
-                          ocol_box[0]:ocol_box[1]]
-
-        subim = zeros( (bsize,bsize), dtype=read_im.dtype)
+        subim = zeros( (bsize,bsize), dtype=im_data.dtype)
         subim += default_values[cutout_type]
 
-        subim[row_box[0]:row_box[1],
-              col_box[0]:col_box[1]] = read_im
+        ok = (
+            all([x >= 0 for x in orow_box])
+            and
+            orow_box[1] > orow_box[0]
+            and
+            all([x >= 0 for x in ocol_box])
+            and
+            ocol_box[1] > ocol_box[0]
+        )
+        if ok:
+            read_im = im_data[orow_box[0]:orow_box[1],
+                              ocol_box[0]:ocol_box[1]]
+
+            subim[row_box[0]:row_box[1],
+                  col_box[0]:col_box[1]] = read_im
+        else:
+            print('    not reading off-image data:',orow_box,ocol_box)
 
         cutout_hdu.write(subim, start=start_row)
 
