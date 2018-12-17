@@ -933,18 +933,6 @@ class MEDSMaker(dict):
         obj_data=self.obj_data
         psf_data=self.psf_data
 
-        # currently require all the same size
-        """
-        for i,p in enumerate(psf_data):
-            if i==0:
-                psf_size=p.get_shape()[0]
-            else:
-                tsize = p.get_shape()[0]
-                if tsize != psf_size:
-                    raise ValueError("currently all psfs "
-                                     "must be same size")
-        obj_data['psf_box_size'] = psf_size
-        """
         total_psf_pixels = 0
 
         #psf_npix = psf_size*psf_size
