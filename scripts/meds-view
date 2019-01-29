@@ -1054,9 +1054,11 @@ class Viewer(dict):
                     print("converting %d/%d nan" % (wnan[0].size, im.size))
                     im[wnan] = 0.0
 
-                std = numpy.sqrt(1.0/wt.max())
-                im += std
-                im *= (1.0/im.max())
+                wtmax = wt.max()
+                if wtmax > 0.0:
+                    std = numpy.sqrt(1.0/wtmax)
+                    im += std
+                    im *= (1.0/im.max())
 
                 imlist.append(im)
 
