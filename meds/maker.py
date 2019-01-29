@@ -434,33 +434,29 @@ class MEDSMaker(dict):
             if 'min_weight' in self:
                 raise RuntimeError("no longer support the min_weight option")
 
-            """
-            bmask = self._read_one_image(file_id, 'bmask')
+            if 'unusable_bmask' in self:
+                bmask = self._read_one_image(file_id, 'bmask')
 
-            if bmask is not None:
-                w=self._check_bad_bmask(bmask)
-                im[w] = 0.0
-            else:
-                print('    no bmask for image')
-            """
+                if bmask is not None:
+                    w=self._check_bad_bmask(bmask, self['unusable_bmask'])
+                    im[w] = 0.0
+                else:
+                    print('    no bmask for image')
 
             scale = self._get_scale(file_id)
             im *= (1.0/scale**2)
 
         return im
 
-    '''
-    def _check_bad_bmask(self, bmask):
+    def _check_bad_bmask(self, bmask, badflags):
         """
         return indices with not-allowed bits set
         """
 
-        binv = self['bitmask_allowed_inv']
-        wbad = where( (bmask & binv) != 0)
+        wbad = where( (bmask & badflags) != 0)
         if wbad[0].size != 0:
-            print('        found %d masked pixels' % wbad[0].size)
+            print('        found %d unusable pixels' % wbad[0].size)
         return wbad
-    '''
 
     def _read_one_image(self, file_id, cutout_type):
         """
