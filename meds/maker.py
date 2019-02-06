@@ -311,12 +311,17 @@ class MEDSMaker(dict):
         cutout_hdu = self.fits['psf']
 
         for file_id in xrange(nfile):
+            print('%d/%d' % (file_id+1,nfile))
 
             for iobj in xrange(nobj):
                 ncut=obj_data['ncutout'][iobj]
-                esize = obj_data['psf_box_size'][iobj]
 
                 for icut in xrange(ncut):
+                    # the expected shape
+                    eshape = (
+                        obj_data['psf_row_size'][iobj,icut],
+                        obj_data['psf_col_size'][iobj,icut],
+                    )
 
                     file_id = obj_data['file_id'][iobj, icut]
 
@@ -326,9 +331,9 @@ class MEDSMaker(dict):
 
                     psfim = psf_data[file_id].get_rec(row, col)
 
-                    if psfim.shape[0] != esize:
-                        raise ValueError("psf size mismatch, expected %d "
-                                         "got %d" % (esize, psfim.shape[0]))
+                    if psfim.shape != eshape:
+                        raise ValueError("psf size mismatch, expected %s "
+                                         "got %s" % (repr(eshape), repr(psfim.shape)))
 
                     cutout_hdu.write(psfim, start=start_row)
 
@@ -702,6 +707,9 @@ class MEDSMaker(dict):
             extra_fields=extra_fields,
         )
 
+        pdt = self._get_psf_dtype(new_nmax)
+        psf_names = [p[0] for p in pdt]
+
         tmpst = get_meds_output_struct(1, new_nmax)
         required_fields = tmpst.dtype.names
 
@@ -709,7 +717,7 @@ class MEDSMaker(dict):
             if name in temp_obj_data.dtype.names:
 
                 lshape = len(new_data[name].shape)
-                if lshape > 1 and name in required_fields:
+                if lshape > 1 and name in required_fields or name in psf_names:
                     new_data[name][:,:] = temp_obj_data[name][:,0:new_nmax]
                 else:
                     new_data[name][:] = temp_obj_data[name][:]
@@ -908,24 +916,67 @@ class MEDSMaker(dict):
             if len(psf_data) != self.image_info.size:
                 raise ValueError("psf_data must be a list of same "
                                  "size as image info struct")
-            
-            p = psf_data[0]
-            try:
-                tmp_image = p.get_rec(100, 100)
-            except:
-                raise ValueError("psf data do not support the "
-                                 "get_rec() method: '%s'" % str(type(p)))
+
+            if 'psf_type' not in self:
+                raise ValueError('set psf_type in config when '
+                                 'writing psf images')
 
         self.psf_data=psf_data
 
     def _set_psf_layout(self):
-        """
-        set the box sizes and start row for each psf image
-        """
         if self.psf_data is None:
             raise ValueError("_set_psf_layout called "
                              "with no psf data set")
 
+        if self['psf_type'] == 'psfex':
+            self._set_layout_psfex()
+        else:
+            raise ValueError('psf_type %s not one of the allowed '
+                             'values ["psfex"]' % self['psf_type'])
+
+    def _set_layout_psfex(self):
+        """
+        set the box sizes and start row for each psf image
+        """
+        print('setting psf layout for PSFEx')
+
+        obj_data=self.obj_data
+        psf_data=self.psf_data
+
+        total_psf_pixels = 0
+
+        psf_start_row = 0
+        for iobj in range(obj_data.size):
+            for icut in range(obj_data['ncutout'][iobj]):
+
+                row = obj_data['orig_row'][iobj, icut]
+                col = obj_data['orig_col'][iobj, icut]
+                file_id = obj_data['file_id'][iobj,icut]
+
+                p = psf_data[file_id]
+
+                pim = p.get_rec(row,col)
+                cen = p.get_center(row,col)
+
+                psf_shape = pim.shape
+                psf_npix = pim.size
+
+                obj_data['psf_row_size'][iobj,icut] = psf_shape[0]
+                obj_data['psf_col_size'][iobj,icut] = psf_shape[1]
+                obj_data['psf_cutout_row'][iobj,icut] = cen[0]
+                obj_data['psf_cutout_col'][iobj,icut] = cen[1]
+                obj_data['psf_start_row'][iobj,icut] = psf_start_row
+
+                psf_start_row += psf_npix
+                total_psf_pixels += psf_npix
+
+
+        self.total_psf_pixels = total_psf_pixels
+       
+    def _set_layout_psfex_old(self):
+        """
+        set the box sizes and start row for each psf image
+        """
         obj_data=self.obj_data
         psf_data=self.psf_data
 
@@ -972,7 +1023,7 @@ class MEDSMaker(dict):
 
 
         self.total_psf_pixels = total_psf_pixels
-        
+ 
     def _check_required_obj_data_fields(self, obj_data):
         """
         make sure the input structure has the required fields
@@ -1044,11 +1095,17 @@ class MEDSMaker(dict):
 
     def _get_psf_dtype(self, nmax):
         return [
-            ('psf_box_size','i4'),
+            ('psf_row_size','i4',nmax),
+            ('psf_col_size','i4',nmax),
             ('psf_cutout_row','f8',nmax),
             ('psf_cutout_col','f8',nmax),
-            ('psf_sigma','f4',nmax),
             ('psf_start_row','i8',nmax),
+
+            #('psf_box_size','i4'),
+            #('psf_cutout_row','f8',nmax),
+            #('psf_cutout_col','f8',nmax),
+            #('psf_sigma','f4',nmax),
+            #('psf_start_row','i8',nmax),
         ]
 
     def _set_image_info(self, image_info):
