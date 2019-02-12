@@ -310,32 +310,31 @@ class MEDSMaker(dict):
 
         cutout_hdu = self.fits['psf']
 
-        for file_id in xrange(nfile):
-            print('%d/%d' % (file_id+1,nfile))
+        for iobj in xrange(nobj):
+            ncut=obj_data['ncutout'][iobj]
 
-            for iobj in xrange(nobj):
-                ncut=obj_data['ncutout'][iobj]
+            for icut in xrange(ncut):
+                # the expected shape
+                eshape = (
+                    obj_data['psf_row_size'][iobj,icut],
+                    obj_data['psf_col_size'][iobj,icut],
+                )
 
-                for icut in xrange(ncut):
-                    # the expected shape
-                    eshape = (
-                        obj_data['psf_row_size'][iobj,icut],
-                        obj_data['psf_col_size'][iobj,icut],
+                file_id = obj_data['file_id'][iobj, icut]
+
+                row = obj_data['orig_row'][iobj, icut]
+                col = obj_data['orig_col'][iobj, icut]
+                start_row = obj_data['psf_start_row'][iobj, icut]
+
+                psfim = psf_data[file_id].get_rec(row, col)
+
+                if psfim.shape != eshape:
+                    raise ValueError(
+                        "psf size mismatch, expected %s "
+                        "got %s" % (repr(eshape), repr(psfim.shape))
                     )
 
-                    file_id = obj_data['file_id'][iobj, icut]
-
-                    row = obj_data['orig_row'][iobj, icut]
-                    col = obj_data['orig_col'][iobj, icut]
-                    start_row = obj_data['psf_start_row'][iobj, icut]
-
-                    psfim = psf_data[file_id].get_rec(row, col)
-
-                    if psfim.shape != eshape:
-                        raise ValueError("psf size mismatch, expected %s "
-                                         "got %s" % (repr(eshape), repr(psfim.shape)))
-
-                    cutout_hdu.write(psfim, start=start_row)
+                cutout_hdu.write(psfim, start=start_row)
 
 
     def _get_clipped_boxes(self, dim, start, bsize):
