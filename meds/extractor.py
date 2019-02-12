@@ -99,7 +99,7 @@ class MEDSExtractor(object):
 
                 # psfs can have different dimensions
                 if 'psf' in infits:
-                    psf_cstart, psf_cend = self._get_psf_row_range(obj_data)
+                    psf_cstart, psf_cend = get_psf_row_range(obj_data)
                     if psf_cstart != -1:
                         # adjust to new start.  If cstart==-1 will all be -9999
                         obj_data['psf_start_row'] -= psf_cstart
@@ -188,34 +188,6 @@ class MEDSExtractor(object):
 
         return cstart, cend
 
-    def _get_psf_row_range(self, data):
-        """
-        get pixel range for this subset
-        """
-        w,=numpy.where( data['ncutout'] > 0)
-        if w.size==0:
-            return -1, -1
-
-
-        ifirst = w[0]
-        ilast  = w[-1]
-
-        cstart    = data['psf_start_row'][ifirst,0]
-
-        ncutout_last = data['ncutout'][ilast]
-
-        if len(data['psf_box_size'].shape) > 1:
-            # in this case the box size is allowed to be different for
-            # different epochs
-            npix_last = data['psf_box_size'][ilast,ncutout_last-1]**2
-        else:
-            npix_last = data['psf_box_size'][ilast]**2
-
-        cend     = data['psf_start_row'][ilast,ncutout_last-1] + npix_last
-
-        return cstart, cend
-
-
 
     def _check_inputs(self):
         if self.meds_file==self.sub_file:
@@ -277,4 +249,38 @@ class MEDSCatalogExtractor(object):
     def _check_inputs(self):
         if self.meds_file==self.new_file:
             raise ValueError("output file name equals input")
+
+def get_psf_row_range(data):
+    """
+    get pixel range for this subset
+    """
+    w,=numpy.where( data['ncutout'] > 0)
+    if w.size==0:
+        return -1, -1
+
+
+    ifirst = w[0]
+    ilast  = w[-1]
+
+    cstart    = data['psf_start_row'][ifirst,0]
+
+    ncutout_last = data['ncutout'][ilast]
+
+    if 'psf_box_size' in data.dtype.names:
+        if len(data['psf_box_size'].shape) > 1:
+            # in this case the box size is allowed to be different for
+            # different epochs
+            npix_last = data['psf_box_size'][ilast,ncutout_last-1]**2
+        else:
+            npix_last = data['psf_box_size'][ilast]**2
+    else:
+        rs = data['psf_row_size'][ilast,ncutout_last-1]
+        cs = data['psf_col_size'][ilast,ncutout_last-1]
+        npix_last = rs*cs
+
+    cend     = data['psf_start_row'][ilast,ncutout_last-1] + npix_last
+
+    return cstart, cend
+
+
 
