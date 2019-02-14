@@ -7,6 +7,7 @@ from __future__ import print_function
 import os
 import fitsio
 import numpy
+from .extractor import get_psf_row_range
 
 def extract_numbers(meds_file, numbers, sub_file):
     """
@@ -99,38 +100,6 @@ class MEDSNumberExtractor(object):
         tup_ranges = [tuple(rng) for rng in ranges]
         return tup_ranges
 
-    def _get_psf_row_ranges(self, data):
-        """
-        get pixel range for this subset
-        """
-        w,=numpy.where( data['ncutout'] > 0)
-        if w.size==0:
-            return [(-1, -1)]
-
-        ranges = []
-        start = True
-        for w in xrange(len(data)):
-            if data['ncutout'][w] > 0:                
-                if start:
-                    ranges.append([data['psf_start_row'][w,0], \
-                                   data['psf_start_row'][w,0]+data['psf_box_size'][w]**2 * data['ncutout'][w]])
-                    start = False
-                else:
-                    if data['psf_start_row'][w,0] != ranges[-1][-1]:
-                        #add new if not back to back
-                        ranges.append([data['psf_start_row'][w,0], \
-                                       data['psf_start_row'][w,0]+data['psf_box_size'][w]**2 * data['ncutout'][w]])
-                    else:
-                        #just expand range of pixels if back to back 
-                        ranges[-1][-1] = data['psf_start_row'][w,0]+data['psf_box_size'][w]**2 * data['ncutout'][w]
-
-        if len(ranges) == 0:
-            ranges.append([-1,-1])
-        
-        #send back as list of tuples
-        tup_ranges = [tuple(rng) for rng in ranges]
-        return tup_ranges
-
 
     def _get_data_from_ranges(self, ranges, data):
         out_data = []
@@ -165,18 +134,19 @@ class MEDSNumberExtractor(object):
                             loc += obj_data['box_size'][i]**2
 
                 if 'psf' in infits:
-                    psf_ranges = self._get_psf_row_ranges(obj_data)
+                    psf_ranges = get_psf_row_ranges(obj_data)
                     if psf_ranges[0][0] != -1:
                         # adjust to new start. If ranges[0][0]==-1 will all be -9999
                         loc = 0
-                        for i in xrange(len(obj_data)):
-                            for j in xrange(obj_data['ncutout'][i]):
-                                obj_data['psf_start_row'][i,j] = loc
-                                loc += obj_data['psf_box_size'][i]**2
+                        for iobj in xrange(len(obj_data)):
+                            for icut in xrange(obj_data['ncutout'][iobj]):
 
+                                obj_data['psf_start_row'][iobj,icut] = loc
 
+                                rs = obj_data['psf_row_size'][iobj,icut]
+                                cs = obj_data['psf_col_size'][iobj,icut]
+                                loc += rs*cs
                 
-                from esutil.numpy_util import ahelp
                 outfits.write(obj_data, extname='object_data')
 
                 #
@@ -233,5 +203,26 @@ class MEDSNumberExtractor(object):
 
         if len(self.numbers) == 0:
             raise ValueError("one must extract at least one object")
+
+def get_psf_row_ranges(data):
+    """
+    get pixel range for this subset
+    """
+    w,=numpy.where( data['ncutout'] > 0)
+    if w.size==0:
+        return [(-1, -1)]
+
+    ranges = []
+    for w in xrange(len(data)):
+        if data['ncutout'][w] > 0:                
+            rr = get_psf_row_range(data[w:w+1])
+            ranges.append(rr)
+
+    if len(ranges) == 0:
+        ranges.append([-1,-1])
+    
+    #send back as list of tuples
+    tup_ranges = [tuple(rng) for rng in ranges]
+    return tup_ranges
 
 
