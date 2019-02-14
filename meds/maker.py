@@ -503,6 +503,171 @@ class MEDSMaker(dict):
         note position offsets appear nowhere in this function
         """
 
+        nim  = self.image_info.size
+        nobj = self.obj_data.size
+
+        trim_to_coadd = self.get('trim_to_coadd',False)
+        if self['first_image_is_coadd'] and trim_to_coadd:
+            print('    trimming to coadd')
+            coadd_wcs, coadd_pos, coadd_bnds, coadd_q = \
+                self._get_pos_and_bounds(self.obj_data, 0)
+            in_bnds = coadd_bnds.contains_points(coadd_pos['zrow'], coadd_pos['zcol'])
+            w_in_bnds, = numpy.where(in_bnds == True)
+            assert w_in_bnds.size > 0,"none found in coadd"
+
+            w_in_bnds = coadd_q[w_in_bnds]
+            self.obj_data = self.obj_data[w_in_bnds]
+
+
+        # box sizes are even
+        half_box_size = self.obj_data['box_size']//2
+
+
+        for file_id in xrange(nim):
+
+            wcs, pos, bnds, q = \
+                    self._get_pos_and_bounds(self.obj_data, file_id)
+
+            # do the test
+            in_bnds = bnds.contains_points(pos['zrow'], pos['zcol'])
+            q_rc, = numpy.where(in_bnds == True)
+            print('    second cut: %6d of %6d objects' % (len(q_rc),len(q)))
+
+            # force into the image if requested
+            if (self['first_image_is_coadd']
+                    and file_id == 0
+                    and self['force_into_coadd_bounds']):
+
+                self._force_into_coadd_bounds(q_rc, pos, bnds)
+
+            # for a coadd, make sure everything is there
+            if ( self['first_image_is_coadd']
+                    and self['check_in_coadd']
+                    and file_id == 0
+                    and len(self.obj_data['ra']) != len(q_rc) ):
+                    raise MEDSCreationError('Not all objects were found in first image for '
+                                            'MEDS making, which was marked as the coadd')
+
+
+
+            # compose them
+            q = q[q_rc]
+
+            # fill in the object_data structure
+
+            # note q_rc since pos was created using obj_data[q]
+            qrow = pos['zrow'][q_rc]
+            qcol = pos['zcol'][q_rc]
+
+            icut = self.obj_data['ncutout'][q]
+            self.obj_data['file_id'][q,icut] = file_id
+            self.obj_data['orig_row'][q,icut] = qrow
+            self.obj_data['orig_col'][q,icut] = qcol
+
+            # this results in the object center being close to
+            # the natural center (dim-1.)/2.
+            ostart_row = qrow.astype('i4') - half_box_size[q] + 1
+            ostart_col = qcol.astype('i4') - half_box_size[q] + 1
+            crow       = qrow - ostart_row
+            ccol       = qcol - ostart_col
+
+            self.obj_data['orig_start_row'][q,icut] = ostart_row
+            self.obj_data['orig_start_col'][q,icut] = ostart_col
+            self.obj_data['cutout_row'][q,icut]     = crow
+            self.obj_data['cutout_col'][q,icut]     = ccol
+
+            # do jacobian, in original, not-offset coords
+            # note q_rc since pos was created using obj_data[q]
+            jacob = wcs.get_jacobian(
+                x=pos['wcs_col'][q_rc],
+                y=pos['wcs_row'][q_rc],
+            )
+
+            # jacob is a tuple of arrays
+            self.obj_data['dudcol'][q,icut] = jacob[0]
+            self.obj_data['dudrow'][q,icut] = jacob[1]
+            self.obj_data['dvdcol'][q,icut] = jacob[2]
+            self.obj_data['dvdrow'][q,icut] = jacob[3]
+
+            # increment
+            self.obj_data['ncutout'][q] += 1
+
+        w,=numpy.where(self.obj_data['ncutout'] > 0)
+        print('%d/%d had ncut > 0' % (w.size, self.obj_data.size))
+
+        self.obj_data = self._make_resized_data(self.obj_data)
+        self._set_start_rows_and_pixel_count()
+
+        if self.psf_data is not None:
+            self._set_psf_layout()
+
+    def _get_pos_and_bounds(self, obj_data, file_id):
+        nim  = self.image_info.size
+        impath=self.image_info['image_path'][file_id].strip()
+        position_offset=self.image_info['position_offset'][file_id]
+
+        print("file %4d of %4d: '%s'" % (file_id+1,nim,impath))
+
+        wcs = self._get_wcs(file_id)
+
+        # monkey patching in the position_offset into wcs
+        wcs.position_offset=position_offset
+
+        q = self._do_rough_sky_cut(wcs, obj_data['ra'], obj_data['dec'])
+        print('    first cut:  %6d of %6d objects' % (q.size,obj_data.size))
+
+        # this is the bottleneck
+        pos = self._do_sky2image(wcs,
+                                 obj_data['ra'][q],
+                                 obj_data['dec'][q])
+
+        # now test if in the actual image space.  Bounds are created
+        # in the offset coords
+        bnds = self._get_image_bounds(wcs)
+
+        # for coadds add buffer if requested
+        if file_id == 0:
+            bnds.rowmin -= self['coadd_bounds_buffer_rowcol']
+            bnds.rowmax += self['coadd_bounds_buffer_rowcol']
+            bnds.colmin -= self['coadd_bounds_buffer_rowcol']
+            bnds.colmax += self['coadd_bounds_buffer_rowcol']
+
+        return wcs, pos, bnds, q
+
+    def _force_into_coadd_bounds(self, q_rc, pos, bnds):
+        from numpy import min,max
+
+        m='    pre-forced obj row range (min, max - image row max):  % e % e'
+        print(m % (min(pos['zrow'][q_rc]),max(pos['zrow'][q_rc]-bnds.rowmax)))
+        m='    pre-forced obj col range (min, max - image col max):  % e % e'
+        print(m % (min(pos['zcol'][q_rc]),max(pos['zcol'][q_rc]-bnds.colmax)))
+
+        rn = numpy.clip(pos['zrow'][q_rc], bnds.rowmin, bnds.rowmax)
+        cn = numpy.clip(pos['zcol'][q_rc], bnds.colmin, bnds.colmax)
+        num_forced = len(numpy.where((rn != pos['zrow'][q_rc]) | (cn != pos['zcol'][q_rc]))[0])
+        pos['zrow'][q_rc] = rn
+        pos['zcol'][q_rc] = cn
+        del rn
+        del cn
+
+        m='    post-forced obj row range (min, max - image row max): % e % e'
+        print(m % (min(pos['zrow'][q_rc]),max(pos['zrow'][q_rc]-bnds.rowmax)))
+        m='    post-forced obj col range (min, max - image col max): % e % e'
+        print(m % (min(pos['zcol'][q_rc]),max(pos['zcol'][q_rc]-bnds.colmax)))
+        print('    # of objects forced into coadd: %d' % num_forced)
+
+        # make sure stuff that is forced made it
+        in_in_bnds = bnds.contains_points(pos['zrow'][q_rc], pos['zcol'][q_rc])
+        if not numpy.all(in_in_bnds):
+            raise MEDSCreationError('Not all objects were found in coadd')
+
+    def _build_meds_layout_old(self):
+        """
+        build the object data, filling in the stub we read
+
+        note position offsets appear nowhere in this function
+        """
+
         # box sizes are even
         half_box_size = self.obj_data['box_size']//2
         obj_data=self.obj_data
@@ -638,6 +803,7 @@ class MEDSMaker(dict):
 
         if self.psf_data is not None:
             self._set_psf_layout()
+
 
     def _set_start_rows_and_pixel_count(self):
         """
