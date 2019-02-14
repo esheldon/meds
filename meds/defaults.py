@@ -22,6 +22,12 @@ default_config = {
     # "in" the coadd image
     'coadd_bounds_buffer_rowcol': 1e-3,
 
+    # the first image is the coadd; currently this is the default
+    'first_image_is_coadd': True,
+
+    # If True, make sure objects all are within the coadd bounds
+    'check_in_coadd': True,
+
     # objects within 'coadd_bounds_buffer_rowcol' buffer around 
     # the bounds of the coadd are forced to be at the edge of 
     # the chip if 'force_into_coadd_bounds' is True    
