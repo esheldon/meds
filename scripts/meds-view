@@ -34,6 +34,8 @@ parser.add_argument('--html-file',
 parser.add_argument('--combine',action='store_true',
                     help="combine the images into a mosiac")
 
+parser.add_argument('--has-coadd',action='store_true',
+                    help="first cutout is the coadd")
 
 def view(image, **keys): 
     """
@@ -937,9 +939,10 @@ def expand(image, new_dims, padval=0, verbose=False):
 
 
 class Viewer(dict):
-    def __init__(self, filename, combine=False, cutout_types=None):
+    def __init__(self, filename, combine=False, cutout_types=None, has_coadd=False):
         import biggles
         biggles.configure( 'default', 'fontsize_min', 1.2)
+        self.has_coadd=has_coadd
         self.filename=filename
         self.combine=combine
         self.m=meds.MEDS(filename)
@@ -1039,7 +1042,6 @@ class Viewer(dict):
         else:
             imlist = self.m.get_cutout_list(index, type=cutout_type)
 
-        metitles=[str(i) for i in self.m['file_id'][index,1:]]
 
         nonlinear=None
         if cutout_type in ['image']:
@@ -1083,9 +1085,12 @@ class Viewer(dict):
 
                 imlist.append(im)
 
-        #titles=['']*len(imlist)
-        #titles[0] = 'coadd'
-        titles=['coadd'] + metitles
+        if self.has_coadd:
+            titles=[str(i) for i in self.m['file_id'][index,1:]]
+            titles = ['coadd'] + titles
+        else:
+            titles=[str(i) for i in self.m['file_id'][index,:]]
+
         kw['titles']=titles
         plt=view_mosaic(imlist, combine=self.combine, **kw)
         return plt
@@ -1166,6 +1171,7 @@ def main():
         args.filename,
         combine=args.combine,
         cutout_types=types,
+        has_coadd=args.has_coadd,
     )
 
     ind = None
