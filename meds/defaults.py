@@ -1,4 +1,4 @@
-__version__="0.9.5rc2"
+__version__="0.9.6"
 
 BMASK_EDGE=2**30
 
