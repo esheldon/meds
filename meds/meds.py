@@ -285,6 +285,12 @@ class MEDS(object):
         mosaic = self.get_mosaic(iobj, type=type)
         return split_mosaic(mosaic)
 
+    def has_psf(self):
+        """
+        returns True if psfs are in the file
+        """
+        return 'psf' in self._fits
+
     def get_psf(self, iobj, icutout):
         """Get a single psf image for the indicated entry.
 
@@ -301,7 +307,7 @@ class MEDS(object):
             The PSF as a numpy array.
         """
 
-        if 'psf' not in self._fits:
+        if not self.has_psf():
             raise RuntimeError("this MEDS file has no 'psf' extension")
 
         self._check_indices(iobj, icutout=icutout)
