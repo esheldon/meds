@@ -935,7 +935,7 @@ class MEDSMaker(dict):
             order_row = order
             order_col = numpy.ceil(float(ncol)/float(nrow))
 
-        # construct a grid - trying to be pythonic, 
+        # construct a grid - trying to be pythonic,
         #  but a double loop would be clearer
         rows = numpy.arange(order_row+1)*(nrow-1.0)/order_row
         cols = numpy.arange(order_col+1)*(ncol-1.0)/order_col
@@ -1120,11 +1120,14 @@ class MEDSMaker(dict):
 
                 p = psf_data[file_id]
 
-                pim = p.get_rec(row,col)
-                cen = p.get_center(row,col)
+                if hasattr(p, 'get_rec_shape'):
+                    psf_shape = p.get_rec_shape(row, col)
+                else:
+                    psf_shape = p.get_rec(row, col).shape
 
-                psf_shape = pim.shape
-                psf_npix = pim.size
+                psf_npix = int(psf_shape[0] * psf_shape[1])
+
+                cen = p.get_center(row, col)
 
                 obj_data['psf_row_size'][iobj,icut] = psf_shape[0]
                 obj_data['psf_col_size'][iobj,icut] = psf_shape[1]
@@ -1137,7 +1140,7 @@ class MEDSMaker(dict):
 
 
         self.total_psf_pixels = total_psf_pixels
-       
+
     def _set_layout_psfex_old(self):
         """
         set the box sizes and start row for each psf image
@@ -1188,7 +1191,7 @@ class MEDSMaker(dict):
 
 
         self.total_psf_pixels = total_psf_pixels
- 
+
     def _check_required_obj_data_fields(self, obj_data):
         """
         make sure the input structure has the required fields
