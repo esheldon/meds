@@ -302,40 +302,93 @@ class MEDSMaker(dict):
 
         print('writing psf cutouts')
 
-        obj_data=self.obj_data
-        psf_data=self.psf_data
-
-        nfile=self.image_info.size
-        nobj=obj_data.size
-
+        obj_data = self.obj_data
+        psf_data = self.psf_data
+        nobj = obj_data.size
         cutout_hdu = self.fits['psf']
 
-        for iobj in xrange(nobj):
-            ncut=obj_data['ncutout'][iobj]
+        if self.get('use_joblib', False):
+            import joblib
+            n_per_job = 1000
+            n_jobs = nobj // n_per_job
+            if n_jobs * n_per_job < nobj:
+                n_jobs += 1
 
-            for icut in xrange(ncut):
-                # the expected shape
-                eshape = (
-                    obj_data['psf_row_size'][iobj,icut],
-                    obj_data['psf_col_size'][iobj,icut],
-                )
+            with joblib.Parallel(
+                    n_jobs=-1,
+                    backend='multiprocessing',
+                    max_nbytes=None) as parallel:
 
-                file_id = obj_data['file_id'][iobj, icut]
+                for job in xrange(n_jobs):
+                    # range of objcts to work on
+                    start = job * n_per_job
+                    end = min(start + n_per_job, nobj)
 
-                row = obj_data['orig_row'][iobj, icut]
-                col = obj_data['orig_col'][iobj, icut]
-                start_row = obj_data['psf_start_row'][iobj, icut]
+                    # queue up the jobs
+                    jobs = []
+                    for iobj in xrange(start, end):
+                        ncut = obj_data['ncutout'][iobj]
+                        for icut in xrange(ncut):
+                            file_id = obj_data['file_id'][iobj, icut]
+                            row = obj_data['orig_row'][iobj, icut]
+                            col = obj_data['orig_col'][iobj, icut]
 
-                psfim = psf_data[file_id].get_rec(row, col)
+                            jobs.append(
+                                joblib.delayed(
+                                    psf_data[file_id].get_rec)(row, col))
 
-                if psfim.shape != eshape:
-                    raise ValueError(
-                        "psf size mismatch, expected %s "
-                        "got %s" % (repr(eshape), repr(psfim.shape))
+                    # run them all in parallel
+                    outputs = parallel(jobs)
+
+                    # write to disk
+                    loc = 0
+                    for iobj in xrange(start, end):
+                        ncut = obj_data['ncutout'][iobj]
+                        for icut in xrange(ncut):
+                            start_row = obj_data['psf_start_row'][iobj, icut]
+                            psfim = outputs[loc]
+                            eshape = (
+                                obj_data['psf_row_size'][iobj, icut],
+                                obj_data['psf_col_size'][iobj, icut],
+                            )
+
+                            if psfim.shape != eshape:
+                                raise ValueError(
+                                    "psf size mismatch, expected %s "
+                                    "got %s" % (
+                                        repr(eshape), repr(psfim.shape))
+                                )
+
+                            cutout_hdu.write(psfim, start=start_row)
+
+                            loc += 1
+
+        else:
+            for iobj in xrange(nobj):
+                ncut = obj_data['ncutout'][iobj]
+
+                for icut in xrange(ncut):
+                    # the expected shape
+                    eshape = (
+                        obj_data['psf_row_size'][iobj, icut],
+                        obj_data['psf_col_size'][iobj, icut],
                     )
 
-                cutout_hdu.write(psfim, start=start_row)
+                    file_id = obj_data['file_id'][iobj, icut]
 
+                    row = obj_data['orig_row'][iobj, icut]
+                    col = obj_data['orig_col'][iobj, icut]
+                    start_row = obj_data['psf_start_row'][iobj, icut]
+
+                    psfim = psf_data[file_id].get_rec(row, col)
+
+                    if psfim.shape != eshape:
+                        raise ValueError(
+                            "psf size mismatch, expected %s "
+                            "got %s" % (repr(eshape), repr(psfim.shape))
+                        )
+
+                    cutout_hdu.write(psfim, start=start_row)
 
     def _get_clipped_boxes(self, dim, start, bsize):
         """
