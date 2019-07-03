@@ -308,6 +308,7 @@ class MEDSMaker(dict):
         cutout_hdu = self.fits['psf']
 
         if self.get('use_joblib', False):
+            print('using joblib')
             import joblib
             n_per_job = 1000
             n_jobs = nobj // n_per_job
@@ -317,7 +318,8 @@ class MEDSMaker(dict):
             with joblib.Parallel(
                     n_jobs=-1,
                     backend='multiprocessing',
-                    max_nbytes=None) as parallel:
+                    max_nbytes=None,
+                    verbose=100) as parallel:
 
                 for job in xrange(n_jobs):
                     # range of objcts to work on
