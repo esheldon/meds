@@ -369,6 +369,38 @@ class MEDSMaker(dict):
 
                     loc += 1
 
+    def _write_psf_cutouts_serial(self):
+        obj_data = self.obj_data
+        psf_data = self.psf_data
+        nobj = obj_data.size
+        cutout_hdu = self.fits['psf']
+
+        for iobj in xrange(nobj):
+            ncut = obj_data['ncutout'][iobj]
+
+            for icut in xrange(ncut):
+                # the expected shape
+                eshape = (
+                    obj_data['psf_row_size'][iobj, icut],
+                    obj_data['psf_col_size'][iobj, icut],
+                )
+
+                file_id = obj_data['file_id'][iobj, icut]
+
+                row = obj_data['orig_row'][iobj, icut]
+                col = obj_data['orig_col'][iobj, icut]
+                start_row = obj_data['psf_start_row'][iobj, icut]
+
+                psfim = psf_data[file_id].get_rec(row, col)
+
+                if psfim.shape != eshape:
+                    raise ValueError(
+                        "psf size mismatch, expected %s "
+                        "got %s" % (repr(eshape), repr(psfim.shape))
+                    )
+
+                cutout_hdu.write(psfim, start=start_row)
+
     def _write_psf_cutouts(self):
         """
         write the cutouts for the specified type
@@ -379,36 +411,7 @@ class MEDSMaker(dict):
         if self.get('use_joblib', False):
             self._write_psf_cutouts_joblib()
         else:
-            obj_data = self.obj_data
-            psf_data = self.psf_data
-            nobj = obj_data.size
-            cutout_hdu = self.fits['psf']
-
-            for iobj in xrange(nobj):
-                ncut = obj_data['ncutout'][iobj]
-
-                for icut in xrange(ncut):
-                    # the expected shape
-                    eshape = (
-                        obj_data['psf_row_size'][iobj, icut],
-                        obj_data['psf_col_size'][iobj, icut],
-                    )
-
-                    file_id = obj_data['file_id'][iobj, icut]
-
-                    row = obj_data['orig_row'][iobj, icut]
-                    col = obj_data['orig_col'][iobj, icut]
-                    start_row = obj_data['psf_start_row'][iobj, icut]
-
-                    psfim = psf_data[file_id].get_rec(row, col)
-
-                    if psfim.shape != eshape:
-                        raise ValueError(
-                            "psf size mismatch, expected %s "
-                            "got %s" % (repr(eshape), repr(psfim.shape))
-                        )
-
-                    cutout_hdu.write(psfim, start=start_row)
+            self._write_psf_cutouts_serial()
 
     def _get_clipped_boxes(self, dim, start, bsize):
         """
