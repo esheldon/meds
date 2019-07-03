@@ -310,7 +310,7 @@ class MEDSMaker(dict):
         if self.get('use_joblib', False):
             print('using joblib')
             import joblib
-            n_per_job = 500
+            n_per_job = 1000
             n_jobs = nobj // n_per_job
             if n_jobs * n_per_job < nobj:
                 n_jobs += 1
