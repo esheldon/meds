@@ -316,7 +316,7 @@ class MEDSMaker(dict):
                 n_jobs += 1
 
             # build the jobs
-            # each process works on a chunk of 500 objects
+            # each process works on a chunk of 2000 objects
             jobs = []
             for job in xrange(n_jobs):
                 # range of objcts to work on
@@ -345,6 +345,9 @@ class MEDSMaker(dict):
                 outputs = parallel(jobs)
 
             # write to disk
+            # at this point all of the PSFs we need are in memory on a
+            # single process
+            # now we write them to disk
             for job, output in enumerate(outputs):
                 # range of objcts to work on
                 start = job * n_per_job
@@ -371,7 +374,6 @@ class MEDSMaker(dict):
                         cutout_hdu.write(psfim, start=start_row)
 
                         loc += 1
-
         else:
             for iobj in xrange(nobj):
                 ncut = obj_data['ncutout'][iobj]
