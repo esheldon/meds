@@ -316,8 +316,8 @@ class MEDSMaker(dict):
                 n_jobs += 1
 
             with joblib.Parallel(
-                    n_jobs=-1,
-                    backend='multiprocessing',
+                    n_jobs=1,
+                    backend='sequential',
                     max_nbytes=None,
                     verbose=50) as parallel:
 
