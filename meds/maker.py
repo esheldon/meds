@@ -335,9 +335,8 @@ class MEDSMaker(dict):
                             row = obj_data['orig_row'][iobj, icut]
                             col = obj_data['orig_col'][iobj, icut]
 
-                            jobs.append(
-                                joblib.delayed(
-                                    psf_data[file_id].get_rec)(row, col))
+                            jobs.append(joblib.delayed(_psf_rec_func)(
+                                    psf_data[file_id], row, col))
 
                     # run them all in parallel
                     outputs = parallel(jobs)
@@ -1393,3 +1392,7 @@ class MEDSMaker(dict):
         allowed = numpy.array([allowed],dtype='u4')
         self['bitmask_allowed'] = allowed[0]
         self['bitmask_allowed_inv'] = ~allowed[0]
+
+
+def _psf_rec_func(p, row, col):
+    return p.get_rec(row, col)
