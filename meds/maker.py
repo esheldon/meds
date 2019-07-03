@@ -319,7 +319,7 @@ class MEDSMaker(dict):
                     n_jobs=-1,
                     backend='multiprocessing',
                     max_nbytes=None,
-                    verbose=100) as parallel:
+                    verbose=50) as parallel:
 
                 for job in xrange(n_jobs):
                     # range of objcts to work on
