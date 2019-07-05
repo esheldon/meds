@@ -296,7 +296,7 @@ class MEDSMaker(dict):
         cutout_hdu.write(subim, start=start_row)
 
     def _write_psf_cutouts_joblib(self):
-        print('using joblib')
+        print('    using joblib')
 
         obj_data = self.obj_data
         psf_data = self.psf_data
@@ -315,6 +315,7 @@ class MEDSMaker(dict):
 
         tempdir = tempfile.mkdtemp()
         try:
+            print('    staging data to %s' % tempdir)
             # build the jobs
             # each process works on a chunk of 2000 objects
             jobs = []
