@@ -309,65 +309,77 @@ class MEDSMaker(dict):
         if n_jobs * n_per_job < nobj:
             n_jobs += 1
 
-        # build the jobs
-        # each process works on a chunk of 2000 objects
-        jobs = []
-        for job in xrange(n_jobs):
-            # range of objcts to work on
-            start = job * n_per_job
-            end = min(start + n_per_job, nobj)
+        import tempfile
+        import os
+        import shutil
 
-            file_ids = []
-            rows = []
-            cols = []
-            for iobj in xrange(start, end):
-                ncut = obj_data['ncutout'][iobj]
-                for icut in xrange(ncut):
-                    file_ids.append(obj_data['file_id'][iobj, icut])
-                    rows.append(obj_data['orig_row'][iobj, icut])
-                    cols.append(obj_data['orig_col'][iobj, icut])
+        tempdir = tempfile.mkdtemp()
+        try:
+            # build the jobs
+            # each process works on a chunk of 2000 objects
+            jobs = []
+            for job in xrange(n_jobs):
+                # range of objcts to work on
+                start = job * n_per_job
+                end = min(start + n_per_job, nobj)
 
-            jobs.append(joblib.delayed(_psf_rec_func)(
-                psf_data, file_ids, rows, cols))
+                file_ids = []
+                rows = []
+                cols = []
+                for iobj in xrange(start, end):
+                    ncut = obj_data['ncutout'][iobj]
+                    for icut in xrange(ncut):
+                        file_ids.append(obj_data['file_id'][iobj, icut])
+                        rows.append(obj_data['orig_row'][iobj, icut])
+                        cols.append(obj_data['orig_col'][iobj, icut])
 
-        # run them all in parallel
-        with joblib.Parallel(
-                n_jobs=-1,
-                backend='multiprocessing',
-                max_nbytes=None,
-                verbose=50) as parallel:
-            outputs = parallel(jobs)
+                jobs.append(joblib.delayed(_psf_rec_func)(
+                    os.path.join(tempdir, 'job%s.pkl' % job),
+                    psf_data, file_ids, rows, cols))
 
-        # write to disk
-        # at this point all of the PSFs we need are in memory on a
-        # single process
-        # now we write them to disk
-        for job, output in enumerate(outputs):
-            # range of objcts to work on
-            start = job * n_per_job
-            end = min(start + n_per_job, nobj)
+            # run them all in parallel
+            with joblib.Parallel(
+                    n_jobs=-1,
+                    backend='multiprocessing',
+                    max_nbytes=None,
+                    verbose=50) as parallel:
+                outputs = parallel(jobs)
 
-            loc = 0
-            for iobj in xrange(start, end):
-                ncut = obj_data['ncutout'][iobj]
-                for icut in xrange(ncut):
-                    start_row = obj_data['psf_start_row'][iobj, icut]
-                    psfim = output[loc]
-                    eshape = (
-                        obj_data['psf_row_size'][iobj, icut],
-                        obj_data['psf_col_size'][iobj, icut],
-                    )
+            # write to disk
+            # at this point all of the PSFs we need are in memory on a
+            # single process
+            # now we write them to disk
+            for job, output_path in enumerate(outputs):
+                # range of objcts to work on
+                start = job * n_per_job
+                end = min(start + n_per_job, nobj)
 
-                    if psfim.shape != eshape:
-                        raise ValueError(
-                            "psf size mismatch, expected %s "
-                            "got %s" % (
-                                repr(eshape), repr(psfim.shape))
+                output = joblib.load(output_path)
+
+                loc = 0
+                for iobj in xrange(start, end):
+                    ncut = obj_data['ncutout'][iobj]
+                    for icut in xrange(ncut):
+                        start_row = obj_data['psf_start_row'][iobj, icut]
+                        psfim = output[loc]
+                        eshape = (
+                            obj_data['psf_row_size'][iobj, icut],
+                            obj_data['psf_col_size'][iobj, icut],
                         )
 
-                    cutout_hdu.write(psfim, start=start_row)
+                        if psfim.shape != eshape:
+                            raise ValueError(
+                                "psf size mismatch, expected %s "
+                                "got %s" % (
+                                    repr(eshape), repr(psfim.shape))
+                            )
 
-                    loc += 1
+                        cutout_hdu.write(psfim, start=start_row)
+
+                        loc += 1
+
+        finally:
+            shutil.rmtree(tempdir, ignore_errors=True)
 
     def _write_psf_cutouts_serial(self):
         obj_data = self.obj_data
@@ -1416,7 +1428,10 @@ class MEDSMaker(dict):
         self['bitmask_allowed_inv'] = ~allowed[0]
 
 
-def _psf_rec_func(psf_data, file_ids, rows, cols):
-    return [
-        psf_data[file_id].get_rec(row, col)
-        for file_id, row, col in zip(file_ids, rows, cols)]
+def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
+    import joblib
+    joblib.dump(
+        [psf_data[file_id].get_rec(row, col)
+         for file_id, row, col in zip(file_ids, rows, cols)],
+        output_path)
+    return output_path
