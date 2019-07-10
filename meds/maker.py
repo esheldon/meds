@@ -295,29 +295,107 @@ class MEDSMaker(dict):
 
         cutout_hdu.write(subim, start=start_row)
 
-    def _write_psf_cutouts(self):
-        """
-        write the cutouts for the specified type
-        """
+    def _write_psf_cutouts_joblib(self):
+        print('    using joblib')
 
-        print('writing psf cutouts')
+        obj_data = self.obj_data
+        psf_data = self.psf_data
+        nobj = obj_data.size
+        cutout_hdu = self.fits['psf']
 
-        obj_data=self.obj_data
-        psf_data=self.psf_data
+        import joblib
+        n_per_job = 2000
+        n_jobs = nobj // n_per_job
+        if n_jobs * n_per_job < nobj:
+            n_jobs += 1
 
-        nfile=self.image_info.size
-        nobj=obj_data.size
+        import tempfile
+        import os
+        import shutil
 
+        tempdir = tempfile.mkdtemp()
+        try:
+            print('    staging data to %s' % tempdir)
+            # build the jobs
+            # each process works on a chunk of 2000 objects
+            jobs = []
+            for job in xrange(n_jobs):
+                # range of objcts to work on
+                start = job * n_per_job
+                end = min(start + n_per_job, nobj)
+
+                file_ids = []
+                rows = []
+                cols = []
+                for iobj in xrange(start, end):
+                    ncut = obj_data['ncutout'][iobj]
+                    for icut in xrange(ncut):
+                        file_ids.append(obj_data['file_id'][iobj, icut])
+                        rows.append(obj_data['orig_row'][iobj, icut])
+                        cols.append(obj_data['orig_col'][iobj, icut])
+
+                jobs.append(joblib.delayed(_psf_rec_func)(
+                    os.path.join(tempdir, 'job%s.pkl' % job),
+                    psf_data, file_ids, rows, cols))
+
+            # run them all in parallel
+            with joblib.Parallel(
+                    n_jobs=-1,
+                    backend='multiprocessing',
+                    max_nbytes=None,
+                    verbose=50) as parallel:
+                outputs = parallel(jobs)
+
+            # write to disk
+            # at this point all of the PSFs we need are in memory on a
+            # single process
+            # now we write them to disk
+            for job, output_path in enumerate(outputs):
+                # range of objcts to work on
+                start = job * n_per_job
+                end = min(start + n_per_job, nobj)
+
+                output = joblib.load(output_path)
+
+                loc = 0
+                for iobj in xrange(start, end):
+                    ncut = obj_data['ncutout'][iobj]
+                    for icut in xrange(ncut):
+                        start_row = obj_data['psf_start_row'][iobj, icut]
+                        psfim = output[loc]
+                        eshape = (
+                            obj_data['psf_row_size'][iobj, icut],
+                            obj_data['psf_col_size'][iobj, icut],
+                        )
+
+                        if psfim.shape != eshape:
+                            raise ValueError(
+                                "psf size mismatch, expected %s "
+                                "got %s" % (
+                                    repr(eshape), repr(psfim.shape))
+                            )
+
+                        cutout_hdu.write(psfim, start=start_row)
+
+                        loc += 1
+
+        finally:
+            shutil.rmtree(tempdir, ignore_errors=True)
+
+    def _write_psf_cutouts_serial(self):
+        obj_data = self.obj_data
+        psf_data = self.psf_data
+        nobj = obj_data.size
         cutout_hdu = self.fits['psf']
 
         for iobj in xrange(nobj):
-            ncut=obj_data['ncutout'][iobj]
+            ncut = obj_data['ncutout'][iobj]
 
             for icut in xrange(ncut):
                 # the expected shape
                 eshape = (
-                    obj_data['psf_row_size'][iobj,icut],
-                    obj_data['psf_col_size'][iobj,icut],
+                    obj_data['psf_row_size'][iobj, icut],
+                    obj_data['psf_col_size'][iobj, icut],
                 )
 
                 file_id = obj_data['file_id'][iobj, icut]
@@ -336,6 +414,17 @@ class MEDSMaker(dict):
 
                 cutout_hdu.write(psfim, start=start_row)
 
+    def _write_psf_cutouts(self):
+        """
+        write the cutouts for the specified type
+        """
+
+        print('writing psf cutouts')
+
+        if self.get('use_joblib', False):
+            self._write_psf_cutouts_joblib()
+        else:
+            self._write_psf_cutouts_serial()
 
     def _get_clipped_boxes(self, dim, start, bsize):
         """
@@ -935,7 +1024,7 @@ class MEDSMaker(dict):
             order_row = order
             order_col = numpy.ceil(float(ncol)/float(nrow))
 
-        # construct a grid - trying to be pythonic, 
+        # construct a grid - trying to be pythonic,
         #  but a double loop would be clearer
         rows = numpy.arange(order_row+1)*(nrow-1.0)/order_row
         cols = numpy.arange(order_col+1)*(ncol-1.0)/order_col
@@ -1120,11 +1209,14 @@ class MEDSMaker(dict):
 
                 p = psf_data[file_id]
 
-                pim = p.get_rec(row,col)
-                cen = p.get_center(row,col)
+                if hasattr(p, 'get_rec_shape'):
+                    psf_shape = p.get_rec_shape(row, col)
+                else:
+                    psf_shape = p.get_rec(row, col).shape
 
-                psf_shape = pim.shape
-                psf_npix = pim.size
+                psf_npix = int(psf_shape[0] * psf_shape[1])
+
+                cen = p.get_center(row, col)
 
                 obj_data['psf_row_size'][iobj,icut] = psf_shape[0]
                 obj_data['psf_col_size'][iobj,icut] = psf_shape[1]
@@ -1137,7 +1229,7 @@ class MEDSMaker(dict):
 
 
         self.total_psf_pixels = total_psf_pixels
-       
+
     def _set_layout_psfex_old(self):
         """
         set the box sizes and start row for each psf image
@@ -1188,7 +1280,7 @@ class MEDSMaker(dict):
 
 
         self.total_psf_pixels = total_psf_pixels
- 
+
     def _check_required_obj_data_fields(self, obj_data):
         """
         make sure the input structure has the required fields
@@ -1335,3 +1427,12 @@ class MEDSMaker(dict):
         allowed = numpy.array([allowed],dtype='u4')
         self['bitmask_allowed'] = allowed[0]
         self['bitmask_allowed_inv'] = ~allowed[0]
+
+
+def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
+    import joblib
+    joblib.dump(
+        [psf_data[file_id].get_rec(row, col)
+         for file_id, row, col in zip(file_ids, rows, cols)],
+        output_path)
+    return output_path
