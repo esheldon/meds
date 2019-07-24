@@ -591,6 +591,9 @@ class MEDSMaker(dict):
         note position offsets appear nowhere in this function
         """
 
+        import time
+        t0 = time.time()
+
         nim  = self.image_info.size
         nobj = self.obj_data.size
 
@@ -688,6 +691,8 @@ class MEDSMaker(dict):
 
         if self.psf_data is not None:
             self._set_psf_layout()
+
+        print("meds layout build time: %f seconds" % (time.time() - t0))
 
     def _get_pos_and_bounds(self, obj_data, file_id):
         nim  = self.image_info.size
@@ -986,23 +991,46 @@ class MEDSMaker(dict):
         get image positions for the input radec. returns a structure
         with both wcs positions and zero offset positions
         """
-        if self.get('use_joblib', False):
+        # the cut at 250 eliminates cases where multiprocessing is
+        # slower or the same due to overheads
+        if self.get('use_joblib', False) and len(ra) > 250:
             import joblib
+            n_jobs = joblib.externals.loky.cpu_count()
 
-            jobs = [
-                joblib.delayed(wcs.sky2image)(_ra, _dec)
-                for _ra, _dec in zip(ra, dec)]
+            n_per_job = len(ra) // n_jobs
+            if n_jobs * n_per_job < len(ra):
+                n_per_job += 1
+            assert n_per_job * n_jobs >= len(ra)
+
+            jobs = []
+            for i in range(n_jobs):
+                start = i * n_per_job
+                end = min(start + n_per_job, len(ra))
+                if start >= len(ra):
+                    break
+                jobs.append(joblib.delayed(wcs.sky2image)(
+                        ra[start:end], dec[start:end]))
 
             with joblib.Parallel(
-                    n_jobs=-1,
+                    n_jobs=n_jobs,
                     backend='multiprocessing',
                     max_nbytes=None,
                     verbose=50) as parallel:
                 outputs = parallel(jobs)
 
-            col, row = list(zip(*outputs))
+            col = []
+            row = []
+            for _c, _r in outputs:
+                if isinstance(_c, numpy.ndarray):
+                    col.extend(_c.tolist())
+                    row.extend(_r.tolist())
+                else:
+                    col.append(_c)
+                    row.append(_r)
             col = numpy.array(col)
             row = numpy.array(row)
+            assert col.shape == ra.shape
+            assert row.shape == ra.shape
         else:
             col, row = wcs.sky2image(ra, dec)
         positions = make_wcs_positions(row, col, wcs.position_offset)
