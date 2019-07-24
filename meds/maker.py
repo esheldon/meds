@@ -986,7 +986,25 @@ class MEDSMaker(dict):
         get image positions for the input radec. returns a structure
         with both wcs positions and zero offset positions
         """
-        col,row = wcs.sky2image(ra,dec)
+        if self.get('use_joblib', False):
+            import joblib
+
+            jobs = [
+                joblib.delayed(wcs.sky2image)(_ra, _dec)
+                for _ra, _dec in zip(ra, dec)]
+
+            with joblib.Parallel(
+                    n_jobs=-1,
+                    backend='multiprocessing',
+                    max_nbytes=None,
+                    verbose=50) as parallel:
+                outputs = parallel(jobs)
+
+            col, row = list(zip(*outputs))
+            col = numpy.array(col)
+            row = numpy.array(row)
+        else:
+            col, row = wcs.sky2image(ra, dec)
         positions = make_wcs_positions(row, col, wcs.position_offset)
         return positions
 
