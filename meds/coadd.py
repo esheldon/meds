@@ -402,7 +402,7 @@ class MEDSCoadder(dict):
 
     def _get_interpolated_coadd_seg(self, iobj):
         jmatrix = self._get_jacobian_matrix()
-        return self.m.interpolate_coadd_seg_image(iobj, jmatrix)
+        return self.m._interpolate_coadd_seg_image(iobj, jmatrix)
 
     def _get_jacobian_matrix(self):
         j=self.target_jacobian
