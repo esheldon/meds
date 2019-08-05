@@ -1217,9 +1217,9 @@ class MEDSMaker(dict):
                 raise ValueError("psf_data must be a list of same "
                                  "size as image info struct")
 
-            if 'psf_type' not in self:
-                raise ValueError('set psf_type in config when '
-                                 'writing psf images')
+            assert 'psf' in self, 'you must have a psf entry when loading psfs'
+            assert self['psf']['type'] == 'psfex', \
+                'only psf type psfex" supported'
 
         self.psf_data=psf_data
 
@@ -1228,11 +1228,11 @@ class MEDSMaker(dict):
             raise ValueError("_set_psf_layout called "
                              "with no psf data set")
 
-        if self['psf_type'] == 'psfex':
+        if self['psf']['type'] == 'psfex':
             self._set_layout_psfex()
         else:
-            raise ValueError('psf_type %s not one of the allowed '
-                             'values ["psfex"]' % self['psf_type'])
+            raise ValueError('psf type %s not one of the allowed '
+                             'values ["psfex"]' % self['psf']['type'])
 
     def _set_layout_psfex(self):
         """
@@ -1474,6 +1474,9 @@ class MEDSMaker(dict):
         self['bitmask_allowed'] = allowed[0]
         self['bitmask_allowed_inv'] = ~allowed[0]
 
+        # support old way
+        if 'psf_type' in self:
+            self['psf'] = {'psf_type': self['psf_type']}
 
 def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
     import joblib
