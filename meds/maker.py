@@ -1008,8 +1008,8 @@ class MEDSMaker(dict):
                 end = min(start + n_per_job, len(ra))
                 if start >= len(ra):
                     break
-                jobs.append(joblib.delayed(wcs.sky2image)(
-                        ra[start:end], dec[start:end]))
+                jobs.append(joblib.delayed(_sky2image_func)(
+                        wcs, ra[start:end], dec[start:end]))
 
             with joblib.Parallel(
                     n_jobs=n_jobs,
@@ -1478,6 +1478,7 @@ class MEDSMaker(dict):
         if 'psf_type' in self:
             self['psf'] = {'type': self['psf_type']}
 
+
 def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
     import joblib
     joblib.dump(
@@ -1485,3 +1486,7 @@ def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
          for file_id, row, col in zip(file_ids, rows, cols)],
         output_path)
     return output_path
+
+
+def _sky2image_func(wcs, ra, dec):
+    return wcs.sky2image(ra, dec)
