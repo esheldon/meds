@@ -1476,7 +1476,7 @@ class MEDSMaker(dict):
 
         # support old way
         if 'psf_type' in self:
-            self['psf'] = {'psf_type': self['psf_type']}
+            self['psf'] = {'type': self['psf_type']}
 
 def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
     import joblib
