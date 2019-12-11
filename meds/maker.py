@@ -1247,6 +1247,8 @@ class MEDSMaker(dict):
             raise ValueError("_set_psf_layout called "
                              "with no psf data set")
 
+        print('setting psf layout')
+
         obj_data=self.obj_data
         psf_data=self.psf_data
 
