@@ -933,6 +933,24 @@ class MEDSMaker(dict):
         either load the wcs from the image_info, or from
         the image header
         """
+        if hasattr(self, 'psf_data'):
+            psf = self.psf_data[file_id]
+            if hasattr(psf, 'get_wcs'):
+                wcs = psf.get_wcs()
+
+                impath = self.image_info['image_path'][file_id].strip()
+                ext = self.image_info['image_ext'][file_id]
+                hdr = fitsio.read_header(impath, ext=ext)
+
+                if 'znaxis1' in hdr:
+                    naxis = numpy.array([hdr['znaxis1'], hdr['znaxis2']])
+                else:
+                    naxis = numpy.array([hdr['naxis1'], hdr['naxis2']])
+
+                wcs.set_naxis(naxis)
+
+                return wcs
+
         if 'wcs' in self.image_info.dtype.names:
             wcs_string = self.image_info['wcs'][file_id]
             wcs_data = json.loads(wcs_string)
@@ -1218,27 +1236,18 @@ class MEDSMaker(dict):
                                  "size as image info struct")
 
             assert 'psf' in self, 'you must have a psf entry when loading psfs'
-            assert self['psf']['type'] == 'psfex', \
-                'only psf type psfex" supported'
 
         self.psf_data=psf_data
 
     def _set_psf_layout(self):
+        """
+        set the box sizes and start row for each psf image
+        """
         if self.psf_data is None:
             raise ValueError("_set_psf_layout called "
                              "with no psf data set")
 
-        if self['psf']['type'] == 'psfex':
-            self._set_layout_psfex()
-        else:
-            raise ValueError('psf type %s not one of the allowed '
-                             'values ["psfex"]' % self['psf']['type'])
-
-    def _set_layout_psfex(self):
-        """
-        set the box sizes and start row for each psf image
-        """
-        print('setting psf layout for PSFEx')
+        print('setting psf layout')
 
         obj_data=self.obj_data
         psf_data=self.psf_data
@@ -1268,57 +1277,6 @@ class MEDSMaker(dict):
                 obj_data['psf_col_size'][iobj,icut] = psf_shape[1]
                 obj_data['psf_cutout_row'][iobj,icut] = cen[0]
                 obj_data['psf_cutout_col'][iobj,icut] = cen[1]
-                obj_data['psf_start_row'][iobj,icut] = psf_start_row
-
-                psf_start_row += psf_npix
-                total_psf_pixels += psf_npix
-
-
-        self.total_psf_pixels = total_psf_pixels
-
-    def _set_layout_psfex_old(self):
-        """
-        set the box sizes and start row for each psf image
-        """
-        obj_data=self.obj_data
-        psf_data=self.psf_data
-
-        total_psf_pixels = 0
-
-        #psf_npix = psf_size*psf_size
-
-        psf_start_row = 0
-        psf_shape=None
-        for iobj in xrange(obj_data.size):
-            for icut in xrange(obj_data['ncutout'][iobj]):
-
-                row = obj_data['orig_row'][iobj, icut]
-                col = obj_data['orig_col'][iobj, icut]
-                file_id = obj_data['file_id'][iobj,icut]
-
-                p = psf_data[file_id]
-
-                pim = p.get_rec(row,col)
-                cen = p.get_center(row,col)
-                try:
-                    sigma = p.get_sigma(row,col)
-                except:
-                    sigma = p.get_sigma()
-
-                if psf_shape is None:
-                    psf_shape = pim.shape
-                    psf_npix = psf_shape[0]**2
-                    obj_data['psf_box_size'] = psf_shape[0]
-                else:
-                    tpsf_shape = pim.shape
-                    if tpsf_shape != psf_shape:
-                        raise ValueError("currently all psfs "
-                                         "must be same size")
-
-
-                obj_data['psf_cutout_row'][iobj,icut] = cen[0]
-                obj_data['psf_cutout_col'][iobj,icut] = cen[1]
-                obj_data['psf_sigma'][iobj,icut] = sigma
                 obj_data['psf_start_row'][iobj,icut] = psf_start_row
 
                 psf_start_row += psf_npix
