@@ -669,10 +669,14 @@ class MEDSMaker(dict):
 
             # do jacobian, in original, not-offset coords
             # note q_rc since pos was created using obj_data[q]
-            jacob = wcs.get_jacobian(
-                x=pos['wcs_col'][q_rc],
-                y=pos['wcs_row'][q_rc],
-            )
+            x = pos['wcs_col'][q_rc]
+            y = pos['wcs_row'][q_rc]
+            if 'color' in self.obj_data.dtype.names:
+                color = self.obj_data['color'][q]
+            else:
+                color = None
+
+            jacob = self._get_jacobians(self, x, y, wcs, color=color)
 
             # jacob is a tuple of arrays
             self.obj_data['dudcol'][q,icut] = jacob[0]
@@ -694,6 +698,18 @@ class MEDSMaker(dict):
 
         print("meds layout build time: %f seconds" % (time.time() - t0))
 
+    def _get_jacobians(self, x, y, wcs, color=None):
+        if color is not None:
+            # not all wcs support color
+            try:
+                jacob = wcs.get_jacobian(x=x, y=y, color=color)
+            except TypeError:
+                jacob = wcs.get_jacobian(x=x, y=y)
+        else:
+            jacob = wcs.get_jacobian(x=x, y=y)
+
+        return jacob
+
     def _get_pos_and_bounds(self, obj_data, file_id):
         nim  = self.image_info.size
         impath=self.image_info['image_path'][file_id].strip()
@@ -710,9 +726,17 @@ class MEDSMaker(dict):
         print('    first cut:  %6d of %6d objects' % (q.size,obj_data.size))
 
         # this is the bottleneck
-        pos = self._do_sky2image(wcs,
-                                 obj_data['ra'][q],
-                                 obj_data['dec'][q])
+        if 'color' in obj_data.dtype.names:
+            color = obj_data['color'][q]
+        else:
+            color = None
+
+        pos = self._do_sky2image(
+            wcs,
+            obj_data['ra'][q],
+            obj_data['dec'][q],
+            color=color,
+        )
 
         # now test if in the actual image space.  Bounds are created
         # in the offset coords
@@ -753,150 +777,6 @@ class MEDSMaker(dict):
         in_in_bnds = bnds.contains_points(pos['zrow'][q_rc], pos['zcol'][q_rc])
         if not numpy.all(in_in_bnds):
             raise MEDSCreationError('Not all objects were found in coadd')
-
-    def _build_meds_layout_old(self):
-        """
-        build the object data, filling in the stub we read
-
-        note position offsets appear nowhere in this function
-        """
-
-        # box sizes are even
-        half_box_size = self.obj_data['box_size']//2
-        obj_data=self.obj_data
-
-        nim  = self.image_info.size
-        nobj = obj_data.size
-
-        for file_id in xrange(nim):
-
-            #self._get_wcs(file_id)
-            impath=self.image_info['image_path'][file_id].strip()
-            position_offset=self.image_info['position_offset'][file_id]
-
-
-            print("file %4d of %4d: '%s'" % (file_id+1,nim,impath))
-
-            wcs = self._get_wcs(file_id)
-
-            # monkey patching in the position_offset into wcs
-            wcs.position_offset=position_offset
-
-            q = self._do_rough_sky_cut(wcs, obj_data['ra'], obj_data['dec'])
-            print('    first cut:  %6d of %6d objects' % (len(q),nobj))
-
-            # this is the bottleneck
-            pos = self._do_sky2image(wcs,
-                                     obj_data['ra'][q],
-                                     obj_data['dec'][q])
-
-            # now test if in the actual image space.  Bounds are created
-            # in the offset coords
-            bnds = self._get_image_bounds(wcs)
-
-            # for coadds add buffer if requested
-            if file_id == 0:
-                bnds.rowmin -= self['coadd_bounds_buffer_rowcol']
-                bnds.rowmax += self['coadd_bounds_buffer_rowcol']
-                bnds.colmin -= self['coadd_bounds_buffer_rowcol']
-                bnds.colmax += self['coadd_bounds_buffer_rowcol']
-
-            # do the test
-            in_bnds = bnds.contains_points(pos['zrow'], pos['zcol'])
-            q_rc, = numpy.where(in_bnds == True)
-            print('    second cut: %6d of %6d objects' % (len(q_rc),len(q)))
-
-            # for coadds remove the buffer
-            if file_id == 0:
-                bnds.rowmin += self['coadd_bounds_buffer_rowcol']
-                bnds.rowmax -= self['coadd_bounds_buffer_rowcol']
-                bnds.colmin += self['coadd_bounds_buffer_rowcol']
-                bnds.colmax -= self['coadd_bounds_buffer_rowcol']
-
-            # force into the image if requested
-            if file_id == 0 and self['force_into_coadd_bounds']:
-                # for debugging
-                print("    pre-forced obj row range (min, max - image row max):  % e % e" \
-                          % (numpy.min(pos['zrow'][q_rc]),numpy.max(pos['zrow'][q_rc]-bnds.rowmax)))
-                print("    pre-forced obj col range (min, max - image col max):  % e % e" \
-                          % (numpy.min(pos['zcol'][q_rc]),numpy.max(pos['zcol'][q_rc]-bnds.colmax)))
-
-                rn = numpy.clip(pos['zrow'][q_rc], bnds.rowmin, bnds.rowmax)
-                cn = numpy.clip(pos['zcol'][q_rc], bnds.colmin, bnds.colmax)
-                num_forced = len(numpy.where((rn != pos['zrow'][q_rc]) | (cn != pos['zcol'][q_rc]))[0])
-                pos['zrow'][q_rc] = rn
-                pos['zcol'][q_rc] = cn
-                del rn
-                del cn
-
-                # for debugging
-                print("    post-forced obj row range (min, max - image row max): % e % e" \
-                          % (numpy.min(pos['zrow'][q_rc]),numpy.max(pos['zrow'][q_rc]-bnds.rowmax)))
-                print("    post-forced obj col range (min, max - image col max): % e % e" \
-                          % (numpy.min(pos['zcol'][q_rc]),numpy.max(pos['zcol'][q_rc]-bnds.colmax)))
-                print("    # of objects forced into coadd: %d" % num_forced)
-
-                # make sure stuff that is forced made it
-                in_in_bnds = bnds.contains_points(pos['zrow'][q_rc], pos['zcol'][q_rc])
-                if not numpy.all(in_in_bnds):
-                    raise MEDSCreationError("Not all objects were found in first "
-                                            "image for MEDS making (which is the "
-                                            "coadd/detection image by convention) "
-                                            "after being forced into its bounds.")
-
-            # now make sure everything is there
-            if file_id == 0 and len(obj_data['ra']) != len(q_rc):
-                raise MEDSCreationError('Not all objects were found in first image for '
-                                        'MEDS making (which is the coadd/detection '
-                                        'image by convention).')
-
-            # compose them
-            q = q[q_rc]
-
-            # fill in the object_data structure
-
-            # note q_rc since pos was created using obj_data[q]
-            qrow = pos['zrow'][q_rc]
-            qcol = pos['zcol'][q_rc]
-
-            icut = obj_data['ncutout'][q]
-            obj_data['file_id'][q,icut] = file_id
-            obj_data['orig_row'][q,icut] = qrow
-            obj_data['orig_col'][q,icut] = qcol
-
-            # this results in the object center being close to
-            # the natural center (dim-1.)/2.
-            ostart_row = qrow.astype('i4') - half_box_size[q] + 1
-            ostart_col = qcol.astype('i4') - half_box_size[q] + 1
-            crow       = qrow - ostart_row
-            ccol       = qcol - ostart_col
-
-            obj_data['orig_start_row'][q,icut] = ostart_row
-            obj_data['orig_start_col'][q,icut] = ostart_col
-            obj_data['cutout_row'][q,icut]     = crow
-            obj_data['cutout_col'][q,icut]     = ccol
-
-            # do jacobian, in original, not-offset coords
-            # note q_rc since pos was created using obj_data[q]
-            jacob = wcs.get_jacobian(
-                x=pos['wcs_col'][q_rc],
-                y=pos['wcs_row'][q_rc])
-
-            # jacob is a tuple of arrays
-            obj_data['dudcol'][q,icut] = jacob[0]
-            obj_data['dudrow'][q,icut] = jacob[1]
-            obj_data['dvdcol'][q,icut] = jacob[2]
-            obj_data['dvdrow'][q,icut] = jacob[3]
-
-            # increment
-            obj_data['ncutout'][q] += 1
-
-        self.obj_data = self._make_resized_data(obj_data)
-        self._set_start_rows_and_pixel_count()
-
-        if self.psf_data is not None:
-            self._set_psf_layout()
-
 
     def _set_start_rows_and_pixel_count(self):
         """
@@ -1004,7 +884,7 @@ class MEDSMaker(dict):
         return new_data
 
 
-    def _do_sky2image(self, wcs, ra, dec):
+    def _do_sky2image(self, wcs, ra, dec, color=None):
         """
         get image positions for the input radec. returns a structure
         with both wcs positions and zero offset positions
@@ -1026,8 +906,23 @@ class MEDSMaker(dict):
                 end = min(start + n_per_job, len(ra))
                 if start >= len(ra):
                     break
-                jobs.append(joblib.delayed(_sky2image_func)(
-                        wcs, ra[start:end], dec[start:end]))
+                if color is not None:
+                    jobs.append(
+                        joblib.delayed(_sky2image_func)(
+                            wcs,
+                            ra[start:end],
+                            dec[start:end],
+                            color=color[start:end]
+                        )
+                    )
+                else:
+                    jobs.append(
+                        joblib.delayed(_sky2image_func)(
+                            wcs,
+                            ra[start:end],
+                            dec[start:end]
+                        )
+                    )
 
             with joblib.Parallel(
                     n_jobs=n_jobs,
@@ -1050,7 +945,8 @@ class MEDSMaker(dict):
             assert col.shape == ra.shape
             assert row.shape == ra.shape
         else:
-            col, row = wcs.sky2image(ra, dec)
+            col, row = _sky2image_func(wcs, ra, dec, color=color)
+
         positions = make_wcs_positions(row, col, wcs.position_offset)
         return positions
 
@@ -1096,7 +992,9 @@ class MEDSMaker(dict):
         rows = rows.ravel()
         cols = cols.ravel()
 
-        # get ra,dec
+        # get ra,dec.  Note if color is used for the wcs we are taking
+        # the default value
+
         pos = make_wcs_positions(rows, cols, wcs.position_offset, inverse=True)
         ra,dec = wcs.image2sky(pos['wcs_col'], pos['wcs_row'])
 
@@ -1446,5 +1344,13 @@ def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
     return output_path
 
 
-def _sky2image_func(wcs, ra, dec):
-    return wcs.sky2image(ra, dec)
+def _sky2image_func(wcs, ra, dec, color=None):
+    if color is not None:
+        try:
+            res = wcs.sky2image(ra, dec, color=color)
+            print('used color')
+        except TypeError:
+            res = wcs.sky2image(ra, dec)
+    else:
+        res = wcs.sky2image(ra, dec)
+    return res
