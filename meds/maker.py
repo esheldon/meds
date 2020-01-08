@@ -676,7 +676,7 @@ class MEDSMaker(dict):
             else:
                 color = None
 
-            jacob = self._get_jacobians(self, x, y, wcs, color=color)
+            jacob = self._get_jacobians(x, y, wcs, color=color)
 
             # jacob is a tuple of arrays
             self.obj_data['dudcol'][q,icut] = jacob[0]
@@ -725,12 +725,12 @@ class MEDSMaker(dict):
         q = self._do_rough_sky_cut(wcs, obj_data['ra'], obj_data['dec'])
         print('    first cut:  %6d of %6d objects' % (q.size,obj_data.size))
 
-        # this is the bottleneck
         if 'color' in obj_data.dtype.names:
             color = obj_data['color'][q]
         else:
             color = None
 
+        # this is the bottleneck
         pos = self._do_sky2image(
             wcs,
             obj_data['ra'][q],
@@ -1345,10 +1345,10 @@ def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
 
 
 def _sky2image_func(wcs, ra, dec, color=None):
+
     if color is not None:
         try:
             res = wcs.sky2image(ra, dec, color=color)
-            print('used color')
         except TypeError:
             res = wcs.sky2image(ra, dec)
     else:
