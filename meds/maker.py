@@ -340,7 +340,7 @@ class MEDSMaker(dict):
 
             # run them all in parallel
             with joblib.Parallel(
-                    n_jobs=self.get('max_joblib_workers', -1),
+                    n_jobs=self._max_joblib_workers,
                     inner_max_num_threads=1,
                     backend='multiprocessing',
                     max_nbytes=None,
@@ -896,8 +896,8 @@ class MEDSMaker(dict):
             import joblib
             n_jobs = joblib.externals.loky.cpu_count()
 
-            if self.get('max_joblib_workers', -1) > 0:
-                n_jobs = min(self.get('max_joblib_workers', -1), n_jobs)
+            if self._max_joblib_workers > 0:
+                n_jobs = min(self._max_joblib_workers, n_jobs)
 
             n_per_job = len(ra) // n_jobs
             if n_jobs * n_per_job < len(ra):
@@ -1338,6 +1338,8 @@ class MEDSMaker(dict):
         # support old way
         if 'psf_type' in self:
             self['psf'] = {'type': self['psf_type']}
+
+        self._max_joblib_workers = self.get('max_joblib_workers', -1)
 
 
 def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
