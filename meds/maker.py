@@ -339,13 +339,11 @@ class MEDSMaker(dict):
                     psf_data, file_ids, rows, cols))
 
             # run them all in parallel
-            with joblib.Parallel(
+            with joblib.parallel_backend("multiprocessing", inner_max_num_threads=1):
+                outputs = joblib.Parallel(
                     n_jobs=self._max_joblib_workers,
-                    inner_max_num_threads=1,
-                    backend='multiprocessing',
                     max_nbytes=None,
-                    verbose=50) as parallel:
-                outputs = parallel(jobs)
+                    verbose=50)(jobs)
 
             # write to disk
             # at this point all of the PSFs we need are in memory on a
@@ -928,13 +926,11 @@ class MEDSMaker(dict):
                         )
                     )
 
-            with joblib.Parallel(
+            with joblib.parallel_backend("multiprocessing", inner_max_num_threads=1):
+                outputs = joblib.Parallel(
                     n_jobs=n_jobs,
-                    inner_max_num_threads=1,
-                    backend='multiprocessing',
                     max_nbytes=None,
-                    verbose=50) as parallel:
-                outputs = parallel(jobs)
+                    verbose=50)(jobs)
 
             col = []
             row = []
