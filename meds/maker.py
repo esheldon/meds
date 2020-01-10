@@ -340,7 +340,7 @@ class MEDSMaker(dict):
 
             # run them all in parallel
             with joblib.Parallel(
-                    n_jobs=-1,
+                    n_jobs=self.get('psf', {}).get('n_jobs', -1),
                     backend='multiprocessing',
                     max_nbytes=None,
                     verbose=50) as parallel:
