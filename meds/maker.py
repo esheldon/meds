@@ -422,7 +422,7 @@ class MEDSMaker(dict):
 
         print('writing psf cutouts')
 
-        if self.get('use_joblib', False):
+        if self._use_joblib:
             self._write_psf_cutouts_joblib()
         else:
             self._write_psf_cutouts_serial()
@@ -892,7 +892,7 @@ class MEDSMaker(dict):
         """
         # the cut at 250 eliminates cases where multiprocessing is
         # slower or the same due to overheads
-        if self.get('use_joblib', False) and len(ra) > 250:
+        if self._use_joblib and len(ra) > 250:
             import joblib
             n_jobs = joblib.externals.loky.cpu_count()
 
@@ -1338,6 +1338,11 @@ class MEDSMaker(dict):
         # support old way
         if 'psf_type' in self:
             self['psf'] = {'type': self['psf_type']}
+
+        if 'joblib' in self:
+            self._use_joblib = True
+        else:
+            self._use_joblib = self.get('use_joblib', False)
 
         self._joblib_backend = self.get(
             'joblib', {}).get('backend', 'multiprocessing')
