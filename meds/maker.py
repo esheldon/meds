@@ -1342,7 +1342,7 @@ class MEDSMaker(dict):
         self._joblib_backend = self.get(
             'joblib', {}).get('backend', 'multiprocessing')
         self._joblib_max_workers = self.get(
-            'joblib', {}).get('max_joblib_workers', -1)
+            'joblib', {}).get('max_workers', -1)
         if self._joblib_backend == 'loky':
             self._joblib_threads = 1
         else:
