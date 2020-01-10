@@ -340,7 +340,8 @@ class MEDSMaker(dict):
 
             # run them all in parallel
             with joblib.Parallel(
-                    n_jobs=self.get('psf', {}).get('n_jobs', -1),
+                    n_jobs=self.get('max_joblib_workers', -1),
+                    inner_max_num_threads=1,
                     backend='multiprocessing',
                     max_nbytes=None,
                     verbose=50) as parallel:
@@ -895,6 +896,9 @@ class MEDSMaker(dict):
             import joblib
             n_jobs = joblib.externals.loky.cpu_count()
 
+            if self.get('max_joblib_workers', -1) > 0:
+                n_jobs = min(self.get('max_joblib_workers', -1), n_jobs)
+
             n_per_job = len(ra) // n_jobs
             if n_jobs * n_per_job < len(ra):
                 n_per_job += 1
@@ -926,6 +930,7 @@ class MEDSMaker(dict):
 
             with joblib.Parallel(
                     n_jobs=n_jobs,
+                    inner_max_num_threads=1,
                     backend='multiprocessing',
                     max_nbytes=None,
                     verbose=50) as parallel:
