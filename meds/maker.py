@@ -339,9 +339,11 @@ class MEDSMaker(dict):
                     psf_data, file_ids, rows, cols))
 
             # run them all in parallel
-            with joblib.parallel_backend("multiprocessing", inner_max_num_threads=1):
+            with joblib.parallel_backend(
+                    self._joblib_backend,
+                    inner_max_num_threads=self._joblib_threads):
                 outputs = joblib.Parallel(
-                    n_jobs=self._max_joblib_workers,
+                    n_jobs=self._joblib_max_workers,
                     max_nbytes=None,
                     verbose=50)(jobs)
 
@@ -894,8 +896,8 @@ class MEDSMaker(dict):
             import joblib
             n_jobs = joblib.externals.loky.cpu_count()
 
-            if self._max_joblib_workers > 0:
-                n_jobs = min(self._max_joblib_workers, n_jobs)
+            if self._joblib_max_workers > 0:
+                n_jobs = min(self._joblib_max_workers, n_jobs)
 
             n_per_job = len(ra) // n_jobs
             if n_jobs * n_per_job < len(ra):
@@ -926,7 +928,9 @@ class MEDSMaker(dict):
                         )
                     )
 
-            with joblib.parallel_backend("multiprocessing", inner_max_num_threads=1):
+            with joblib.parallel_backend(
+                    self._joblib_backend,
+                    inner_max_num_threads=self._joblib_threads):
                 outputs = joblib.Parallel(
                     n_jobs=n_jobs,
                     max_nbytes=None,
@@ -1335,7 +1339,14 @@ class MEDSMaker(dict):
         if 'psf_type' in self:
             self['psf'] = {'type': self['psf_type']}
 
-        self._max_joblib_workers = self.get('max_joblib_workers', -1)
+        self._joblib_backend = self.get(
+            'joblib', {}).get('backend', 'multiprocessing')
+        self._joblib_max_workers = self.get(
+            'joblib', {}).get('max_joblib_workers', -1)
+        if self._joblib_backend == 'loky':
+            self._joblib_threads = 1
+        else:
+            self._joblib_threads = None
 
 
 def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
