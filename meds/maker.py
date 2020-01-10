@@ -339,7 +339,7 @@ class MEDSMaker(dict):
                     psf_data, file_ids, rows, cols))
 
             # run them all in parallel
-            with joblib.parallel_backend("loky", inner_max_num_threads=1):
+            with joblib.parallel_backend("multiprocessing"):
                 outputs = joblib.Parallel(
                     n_jobs=self._max_joblib_workers,
                     max_nbytes=None,
@@ -926,7 +926,7 @@ class MEDSMaker(dict):
                         )
                     )
 
-            with joblib.parallel_backend("loky", inner_max_num_threads=1):
+            with joblib.parallel_backend("multiprocessing"):
                 outputs = joblib.Parallel(
                     n_jobs=n_jobs,
                     max_nbytes=None,
