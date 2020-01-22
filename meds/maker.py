@@ -814,7 +814,7 @@ class MEDSMaker(dict):
         either load the wcs from the image_info, or from
         the image header
         """
-        if hasattr(self, 'psf_data'):
+        if self.psf_data is not None:
             psf = self.psf_data[file_id]
             if hasattr(psf, 'get_wcs'):
                 wcs = psf.get_wcs()
