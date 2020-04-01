@@ -1,0 +1,6 @@
+biggles
+esutil
+fitsio
+ngmix
+numpy
+pyyaml
