@@ -1,6 +1,5 @@
+from setuptools import setup, find_packages, Extension
 import os
-import glob
-from distutils.core import setup, Extension
 import numpy
 
 try:
@@ -11,27 +10,28 @@ except ImportError:
     from distutils.command.build_py import build_py
 
 
-scripts=[
+scripts = [
     'meds-extract-range',
     'meds-extract-catalog',
     'meds-view',
     'meds-compare',
 ]
-scripts=[os.path.join('./scripts', s) for s in scripts]
+scripts = [os.path.join('./scripts', s) for s in scripts]
 
-sources=["meds/_uberseg.c"]
-include_dirs=[numpy.get_include()]
-ext=Extension("meds._uberseg", sources, include_dirs=include_dirs)
+sources = ["meds/_uberseg.c"]
+include_dirs = [numpy.get_include()]
+ext = Extension("meds._uberseg", sources, include_dirs=include_dirs)
 
-setup(name="meds", 
-      version="0.9.8",
-      description="Python and C libraries for reading MEDS files",
-      license = "GNU GPLv3",
-      author="Erin Scott Sheldon",
-      author_email="erin.sheldon@gmail.com",
-      packages=['meds'],
-      ext_modules=[ext],
-      include_dirs=include_dirs,
-      scripts=scripts,
-      cmdclass={'build_py': build_py})
-
+setup(
+    name="meds",
+    version="0.9.8",
+    description="Python and C libraries for reading MEDS files",
+    license="GNU GPLv3",
+    author="Erin Scott Sheldon",
+    author_email="erin.sheldon@gmail.com",
+    packages=find_packages(),
+    ext_modules=[ext],
+    include_dirs=include_dirs,
+    scripts=scripts,
+    cmdclass={'build_py': build_py},
+)
