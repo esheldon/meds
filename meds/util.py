@@ -377,8 +377,7 @@ def thetaphi_to_unitvecs_ruv(theta,phi):
 
     rhat = numpy.array([sint*cosp,sint*sinp,cost]).T
     that = numpy.array([cost*cosp,cost*sinp,-1.0*sint]).T
-    phat = numpy.array([-1.0*sinp,cosp,numpy.zeros_like(0.0)]).T
+    phat = numpy.array([-1.0*sinp,cosp,numpy.zeros_like(sinp)]).T
 
     return rhat,phat,-1.0*that
-
 
