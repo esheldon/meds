@@ -9,19 +9,7 @@ from numpy import where, zeros
 
 # external requirements
 import fitsio
-
-try:
-    xrange
-except:
-    xrange=range
-
-# esutil is only needed for the Maker, so we will let
-# it slide if it is missing
-try:
-    import esutil as eu
-    have_esutil=True
-except:
-    have_esutil=False
+import esutil as eu
 
 from . import defaults
 
@@ -29,7 +17,6 @@ from .util import (
     make_wcs_positions,
     get_meds_output_struct,
     get_meds_input_struct,
-    get_image_info_struct,
     get_image_info_dtype,
     radec_to_uv,
     MEDSCreationError,
@@ -40,16 +27,17 @@ from .defaults import default_config, default_values
 
 
 SUPPORTED_CUTOUT_TYPES = [
-    'image',
-    'weight',
-    'seg',
-    'bmask',
-    'ormask',
-    'noise',
+    "image",
+    "weight",
+    "seg",
+    "bmask",
+    "ormask",
+    "noise",
 ]
 
 # meds file format version
-MEDS_FMT_VERSION='0.9.1'
+MEDS_FMT_VERSION = "0.9.1"
+
 
 class MEDSMaker(dict):
     """
@@ -71,13 +59,16 @@ class MEDSMaker(dict):
         Optional meta data to write.  This is typically a length
         one array, but can be anything in principle.
     """
-    def __init__(self,
-                 obj_data,
-                 image_info,
-                 psf_data=None,
-                 config=None,
-                 meta_data=None):
 
+    def __init__(
+        self,
+        obj_data,
+        image_info,
+        psf_data=None,
+        psf_info=None,
+        config=None,
+        meta_data=None,
+    ):
 
         self._load_config(config)
         self._set_extra_config()
@@ -86,10 +77,10 @@ class MEDSMaker(dict):
         self._set_image_info(image_info)
         self._set_meta_data(meta_data)
         self._set_psf_data(psf_data)
+        self._set_psf_info(psf_info)
         self._set_obj_data(obj_data)
 
         self._force_box_sizes_even()
-
 
     def write(self, filename):
         """
@@ -114,8 +105,8 @@ class MEDSMaker(dict):
         """
 
         print("opening output MEDS file: '%s'" % filename)
-        with fitsio.FITS(filename,'rw',clobber=True) as fits:
-            self.fits=fits
+        with fitsio.FITS(filename, "rw", clobber=True) as fits:
+            self.fits = fits
 
             self._write_object_data()
             self._write_image_info()
@@ -123,61 +114,60 @@ class MEDSMaker(dict):
 
             self._reserve_mosaic_images()
 
-            for type in self['cutout_types']:
+            for type in self["cutout_types"]:
                 self._write_cutouts(type)
 
             if self.psf_data is not None:
                 self._write_psf_cutouts()
 
-        print('output is in:',filename)
+            if self.psf_info is not None:
+                self._write_psf_info()
+
+        print("output is in:", filename)
 
     def _write_object_data(self):
         """
         write the object data
         """
 
-        print('writing object_data')
-        self.fits.write(self.obj_data,
-                        extname=self['object_data_extname'])
+        print("writing object_data")
+        self.fits.write(self.obj_data, extname=self["object_data_extname"])
 
     def _write_image_info(self):
         """
         write the object data
         """
 
-        print('writing image_info')
-        self.fits.write(self.image_info,
-                        extname=self['image_info_extname'])
+        print("writing image_info")
+        self.fits.write(self.image_info, extname=self["image_info_extname"])
 
     def _write_metadata(self):
         """
         write the object data
         """
 
-        print('writing metadata')
+        print("writing metadata")
         if self.meta_data is not None:
-            self.fits.write(self.meta_data,
-                            extname=self['metadata_extname'])
-
+            self.fits.write(self.meta_data, extname=self["metadata_extname"])
 
     def _reserve_mosaic_images(self):
         """
         reserve space on disk for each mosaic image
         """
 
-        fits=self.fits
+        fits = self.fits
 
-        dims=[self.total_pixels]
+        dims = [self.total_pixels]
 
-        if 'fpack_pars' in self:
-            header=self['fpack_pars']
+        if "fpack_pars" in self:
+            header = self["fpack_pars"]
         else:
-            header=None
+            header = None
 
-        for type in self['cutout_types']:
-            print('    reserving %s mosaic' % type)
-            extname=self['%s_cutout_extname' % type]
-            dtype=self['%s_dtype' % type]
+        for type in self["cutout_types"]:
+            print("    reserving %s mosaic" % type)
+            extname = self["%s_cutout_extname" % type]
+            dtype = self["%s_dtype" % type]
 
             # this reserves space for the images and header,
             # but no data is written
@@ -193,9 +183,9 @@ class MEDSMaker(dict):
             fits[extname].write_keys(header, clean=False)
 
         if self.psf_data is not None:
-            print('    reserving psf mosaic')
-            extname='psf'
-            dtype='f4'
+            print("    reserving psf mosaic")
+            extname = "psf"
+            dtype = "f4"
             psf_dims = [self.total_psf_pixels]
 
             # this reserves space for the images and header,
@@ -211,39 +201,39 @@ class MEDSMaker(dict):
             # now need to write the header
             fits[extname].write_keys(header, clean=False)
 
-
     def _write_cutouts(self, cutout_type):
         """
         write the cutouts for the specified type
         """
 
-        print('writing %s cutouts' % cutout_type)
+        print("writing %s cutouts" % cutout_type)
 
-        obj_data=self.obj_data
+        obj_data = self.obj_data
 
-        nfile=self.image_info.size
-        nobj=obj_data.size
+        nfile = self.image_info.size
+        nobj = obj_data.size
 
         cutout_hdu = self._get_cutout_hdu(cutout_type)
 
-        for file_id in xrange(nfile):
+        for file_id in range(nfile):
 
-            pkey   = '%s_path' % cutout_type
+            pkey = "%s_path" % cutout_type
             impath = self.image_info[pkey][file_id].strip()
 
-            print('    %d/%d %s %s' % (file_id+1,nfile,cutout_type,impath))
+            ttup = (file_id + 1, nfile, cutout_type, impath)
+            print("    %d/%d %s %s" % ttup)
 
             im_data = self._read_image(file_id, cutout_type)
 
             if im_data is None:
-                print('    no %s specified for file' % cutout_type)
+                print("    no %s specified for file" % cutout_type)
                 continue
 
-            for iobj in xrange(nobj):
-                ncut=obj_data['ncutout'][iobj]
+            for iobj in range(nobj):
+                ncut = obj_data["ncutout"][iobj]
 
-                for icut in xrange(ncut):
-                    if obj_data['file_id'][iobj, icut] == file_id:
+                for icut in range(ncut):
+                    if obj_data["file_id"][iobj, icut] == file_id:
 
                         self._write_cutout(
                             iobj,
@@ -253,57 +243,52 @@ class MEDSMaker(dict):
                             cutout_type,
                         )
 
-    def _write_cutout(self,
-                      iobj, icut,
-                      cutout_hdu,
-                      im_data,
-                      cutout_type):
+    def _write_cutout(self, iobj, icut, cutout_hdu, im_data, cutout_type):
         """
         extract a cutout and write it to the mosaic image
         """
         dims = im_data.shape
 
-        d=self.obj_data
-        orow = d['orig_start_row'][iobj,icut]
-        ocol = d['orig_start_col'][iobj,icut]
-        bsize = d['box_size'][iobj]
-        start_row = d['start_row'][iobj,icut]
+        d = self.obj_data
+        orow = d["orig_start_row"][iobj, icut]
+        ocol = d["orig_start_col"][iobj, icut]
+        bsize = d["box_size"][iobj]
+        start_row = d["start_row"][iobj, icut]
 
-        orow_box, row_box = self._get_clipped_boxes(dims[0],orow,bsize)
-        ocol_box, col_box = self._get_clipped_boxes(dims[1],ocol,bsize)
+        orow_box, row_box = self._get_clipped_boxes(dims[0], orow, bsize)
+        ocol_box, col_box = self._get_clipped_boxes(dims[1], ocol, bsize)
 
-        subim = zeros( (bsize,bsize), dtype=im_data.dtype)
+        subim = zeros((bsize, bsize), dtype=im_data.dtype)
         subim += default_values[cutout_type]
 
         ok = (
             all([x >= 0 for x in orow_box])
-            and
-            orow_box[1] > orow_box[0]
-            and
-            all([x >= 0 for x in ocol_box])
-            and
-            ocol_box[1] > ocol_box[0]
+            and orow_box[1] > orow_box[0]
+            and all([x >= 0 for x in ocol_box])
+            and ocol_box[1] > ocol_box[0]
         )
         if ok:
-            read_im = im_data[orow_box[0]:orow_box[1],
-                              ocol_box[0]:ocol_box[1]]
+            read_im = im_data[
+                orow_box[0]: orow_box[1],
+                ocol_box[0]: ocol_box[1]
+            ]
 
-            subim[row_box[0]:row_box[1],
-                  col_box[0]:col_box[1]] = read_im
+            subim[row_box[0]: row_box[1], col_box[0]: col_box[1]] = read_im
         else:
-            print('    not reading off-image data:',orow_box,ocol_box)
+            print("    not reading off-image data:", orow_box, ocol_box)
 
         cutout_hdu.write(subim, start=start_row)
 
     def _write_psf_cutouts_joblib(self):
-        print('    using joblib')
+        print("    using joblib")
 
         obj_data = self.obj_data
         psf_data = self.psf_data
         nobj = obj_data.size
-        cutout_hdu = self.fits['psf']
+        cutout_hdu = self.fits["psf"]
 
         import joblib
+
         n_per_job = 2000
         n_jobs = nobj // n_per_job
         if n_jobs * n_per_job < nobj:
@@ -315,11 +300,11 @@ class MEDSMaker(dict):
 
         tempdir = tempfile.mkdtemp()
         try:
-            print('    staging data to %s' % tempdir)
+            print("    staging data to %s" % tempdir)
             # build the jobs
             # each process works on a chunk of 2000 objects
             jobs = []
-            for job in xrange(n_jobs):
+            for job in range(n_jobs):
                 # range of objcts to work on
                 start = job * n_per_job
                 end = min(start + n_per_job, nobj)
@@ -327,25 +312,32 @@ class MEDSMaker(dict):
                 file_ids = []
                 rows = []
                 cols = []
-                for iobj in xrange(start, end):
-                    ncut = obj_data['ncutout'][iobj]
-                    for icut in xrange(ncut):
-                        file_ids.append(obj_data['file_id'][iobj, icut])
-                        rows.append(obj_data['orig_row'][iobj, icut])
-                        cols.append(obj_data['orig_col'][iobj, icut])
+                for iobj in range(start, end):
+                    ncut = obj_data["ncutout"][iobj]
+                    for icut in range(ncut):
+                        file_ids.append(obj_data["file_id"][iobj, icut])
+                        rows.append(obj_data["orig_row"][iobj, icut])
+                        cols.append(obj_data["orig_col"][iobj, icut])
 
-                jobs.append(joblib.delayed(_psf_rec_func)(
-                    os.path.join(tempdir, 'job%s.pkl' % job),
-                    psf_data, file_ids, rows, cols))
+                jobs.append(
+                    joblib.delayed(_psf_rec_func)(
+                        os.path.join(tempdir, "job%s.pkl" % job),
+                        psf_data,
+                        file_ids,
+                        rows,
+                        cols,
+                    )
+                )
 
             # run them all in parallel
             with joblib.parallel_backend(
-                    self._joblib_backend,
-                    inner_max_num_threads=self._joblib_threads):
+                self._joblib_backend,
+                inner_max_num_threads=self._joblib_threads
+            ):
                 outputs = joblib.Parallel(
                     n_jobs=self._joblib_max_workers,
-                    max_nbytes=None,
-                    verbose=50)(jobs)
+                    max_nbytes=None, verbose=50
+                )(jobs)
 
             # write to disk
             # at this point all of the PSFs we need are in memory on a
@@ -359,21 +351,20 @@ class MEDSMaker(dict):
                 output = joblib.load(output_path)
 
                 loc = 0
-                for iobj in xrange(start, end):
-                    ncut = obj_data['ncutout'][iobj]
-                    for icut in xrange(ncut):
-                        start_row = obj_data['psf_start_row'][iobj, icut]
+                for iobj in range(start, end):
+                    ncut = obj_data["ncutout"][iobj]
+                    for icut in range(ncut):
+                        start_row = obj_data["psf_start_row"][iobj, icut]
                         psfim = output[loc]
                         eshape = (
-                            obj_data['psf_row_size'][iobj, icut],
-                            obj_data['psf_col_size'][iobj, icut],
+                            obj_data["psf_row_size"][iobj, icut],
+                            obj_data["psf_col_size"][iobj, icut],
                         )
 
                         if psfim.shape != eshape:
                             raise ValueError(
                                 "psf size mismatch, expected %s "
-                                "got %s" % (
-                                    repr(eshape), repr(psfim.shape))
+                                "got %s" % (repr(eshape), repr(psfim.shape))
                             )
 
                         cutout_hdu.write(psfim, start=start_row)
@@ -387,23 +378,23 @@ class MEDSMaker(dict):
         obj_data = self.obj_data
         psf_data = self.psf_data
         nobj = obj_data.size
-        cutout_hdu = self.fits['psf']
+        cutout_hdu = self.fits["psf"]
 
-        for iobj in xrange(nobj):
-            ncut = obj_data['ncutout'][iobj]
+        for iobj in range(nobj):
+            ncut = obj_data["ncutout"][iobj]
 
-            for icut in xrange(ncut):
+            for icut in range(ncut):
                 # the expected shape
                 eshape = (
-                    obj_data['psf_row_size'][iobj, icut],
-                    obj_data['psf_col_size'][iobj, icut],
+                    obj_data["psf_row_size"][iobj, icut],
+                    obj_data["psf_col_size"][iobj, icut],
                 )
 
-                file_id = obj_data['file_id'][iobj, icut]
+                file_id = obj_data["file_id"][iobj, icut]
 
-                row = obj_data['orig_row'][iobj, icut]
-                col = obj_data['orig_col'][iobj, icut]
-                start_row = obj_data['psf_start_row'][iobj, icut]
+                row = obj_data["orig_row"][iobj, icut]
+                col = obj_data["orig_col"][iobj, icut]
+                start_row = obj_data["psf_start_row"][iobj, icut]
 
                 psfim = psf_data[file_id].get_rec(row, col)
 
@@ -420,12 +411,21 @@ class MEDSMaker(dict):
         write the cutouts for the specified type
         """
 
-        print('writing psf cutouts')
+        print("writing psf cutouts")
 
         if self._use_joblib:
             self._write_psf_cutouts_joblib()
         else:
             self._write_psf_cutouts_serial()
+
+    def _write_psf_info(self):
+        """
+        write the psf info
+        """
+
+        print("writing psf info")
+
+        self.fits.write(self.psf_info, extname="psf_info")
 
     def _get_clipped_boxes(self, dim, start, bsize):
         """
@@ -453,7 +453,7 @@ class MEDSMaker(dict):
             Start and end slice ranges in the output image
         """
         # slice range in the original image
-        obox = [start, start+bsize]
+        obox = [start, start + bsize]
 
         # slice range in the sub image into which we will copy
         box = [0, bsize]
@@ -464,7 +464,7 @@ class MEDSMaker(dict):
             box[0] = 0 - start
 
         im_max = dim
-        diff= im_max - obox[1]
+        diff = im_max - obox[1]
         if diff < 0:
             obox[1] = im_max
             box[1] = box[1] + diff
@@ -475,10 +475,10 @@ class MEDSMaker(dict):
         """
         get the cutout hdu object for the specified cutout type
         """
-        if cutout_type=='psf':
-            tkey = 'psf'
+        if cutout_type == "psf":
+            tkey = "psf"
         else:
-            tkey = '%s_cutouts' % cutout_type
+            tkey = "%s_cutouts" % cutout_type
         cutout_hdu = self.fits[tkey]
         return cutout_hdu
 
@@ -503,13 +503,13 @@ class MEDSMaker(dict):
 
         im = self._read_one_image(file_id, cutout_type)
 
-        if cutout_type=='image':
-            bkg = self._read_one_image(file_id, 'bkg')
+        if cutout_type == "image":
+            bkg = self._read_one_image(file_id, "bkg")
 
             if bkg is not None:
                 im -= bkg
             else:
-                print('    no background for image')
+                print("    no background for image")
 
             """
             bmask = self._read_one_image(file_id, 'bmask')
@@ -523,22 +523,22 @@ class MEDSMaker(dict):
             scale = self._get_scale(file_id)
             im *= scale
 
-        elif cutout_type=='weight':
+        elif cutout_type == "weight":
 
-            if 'min_weight' in self:
+            if "min_weight" in self:
                 raise RuntimeError("no longer support the min_weight option")
 
-            if 'unusable_bmask' in self:
-                bmask = self._read_one_image(file_id, 'bmask')
+            if "unusable_bmask" in self:
+                bmask = self._read_one_image(file_id, "bmask")
 
                 if bmask is not None:
-                    w=self._check_bad_bmask(bmask, self['unusable_bmask'])
+                    w = self._check_bad_bmask(bmask, self["unusable_bmask"])
                     im[w] = 0.0
                 else:
-                    print('    no bmask for image')
+                    print("    no bmask for image")
 
             scale = self._get_scale(file_id)
-            im *= (1.0/scale**2)
+            im *= 1.0 / scale ** 2
 
         return im
 
@@ -547,24 +547,24 @@ class MEDSMaker(dict):
         return indices with not-allowed bits set
         """
 
-        wbad = where( (bmask & badflags) != 0)
+        wbad = where((bmask & badflags) != 0)
         if wbad[0].size != 0:
-            print('        found %d unusable pixels' % wbad[0].size)
+            print("        found %d unusable pixels" % wbad[0].size)
         return wbad
 
     def _read_one_image(self, file_id, cutout_type):
         """
         read a single image, no manipulations done here
         """
-        info=self.image_info
+        info = self.image_info
 
-        pkey = '%s_path' % cutout_type
-        extkey = '%s_ext' % cutout_type
-        impath=info[pkey][file_id].strip()
+        pkey = "%s_path" % cutout_type
+        extkey = "%s_ext" % cutout_type
+        impath = info[pkey][file_id].strip()
         ext = info[extkey][file_id]
 
-        if impath.lower() == 'none' or len(impath)==0:
-            im=None
+        if impath.lower() == "none" or len(impath) == 0:
+            im = None
         else:
             if isinstance(ext, str):
                 ext = ext.strip()
@@ -579,11 +579,10 @@ class MEDSMaker(dict):
         get the scale for the image if specified, else
         return 1.0
         """
-        if 'scale' in self.image_info.dtype.names:
-            return self.image_info['scale'][file_id]
+        if "scale" in self.image_info.dtype.names:
+            return self.image_info["scale"][file_id]
         else:
             return 1.0
-
 
     def _build_meds_layout(self):
         """
@@ -593,54 +592,63 @@ class MEDSMaker(dict):
         """
 
         import time
+
         t0 = time.time()
 
-        nim  = self.image_info.size
-        nobj = self.obj_data.size
+        nim = self.image_info.size
 
-        trim_to_coadd = self.get('trim_to_coadd',False)
-        if self['first_image_is_coadd'] and trim_to_coadd:
-            print('    trimming to coadd')
-            coadd_wcs, coadd_pos, coadd_bnds, coadd_q = \
-                self._get_pos_and_bounds(self.obj_data, 0)
-            in_bnds = coadd_bnds.contains_points(coadd_pos['zrow'], coadd_pos['zcol'])
-            w_in_bnds, = numpy.where(in_bnds == True)
-            assert w_in_bnds.size > 0,"none found in coadd"
+        trim_to_coadd = self.get("trim_to_coadd", False)
+        if self["first_image_is_coadd"] and trim_to_coadd:
+            print("    trimming to coadd")
+
+            tres = self._get_pos_and_bounds(self.obj_data, 0)
+            coadd_wcs, coadd_pos, coadd_bnds, coadd_q = tres
+
+            in_bnds = coadd_bnds.contains_points(
+                coadd_pos["zrow"],
+                coadd_pos["zcol"],
+            )
+            (w_in_bnds,) = numpy.where(in_bnds)
+            assert w_in_bnds.size > 0, "none found in coadd"
 
             w_in_bnds = coadd_q[w_in_bnds]
             self.obj_data = self.obj_data[w_in_bnds]
 
-
         # box sizes are even
-        half_box_size = self.obj_data['box_size']//2
+        half_box_size = self.obj_data["box_size"] // 2
 
+        for file_id in range(nim):
 
-        for file_id in xrange(nim):
-
-            wcs, pos, bnds, q = \
-                    self._get_pos_and_bounds(self.obj_data, file_id)
+            wcs, pos, bnds, q = self._get_pos_and_bounds(
+                self.obj_data, file_id
+            )
 
             # do the test
-            in_bnds = bnds.contains_points(pos['zrow'], pos['zcol'])
-            q_rc, = numpy.where(in_bnds == True)
-            print('    second cut: %6d of %6d objects' % (len(q_rc),len(q)))
+            in_bnds = bnds.contains_points(pos["zrow"], pos["zcol"])
+            (q_rc,) = numpy.where(in_bnds)
+            print("    second cut: %6d of %6d objects" % (len(q_rc), len(q)))
 
             # force into the image if requested
-            if (self['first_image_is_coadd']
-                    and file_id == 0
-                    and self['force_into_coadd_bounds']):
+            if (
+                self["first_image_is_coadd"]
+                and file_id == 0
+                and self["force_into_coadd_bounds"]
+            ):
 
                 self._force_into_coadd_bounds(q_rc, pos, bnds)
 
             # for a coadd, make sure everything is there
-            if ( self['first_image_is_coadd']
-                    and self['check_in_coadd']
-                    and file_id == 0
-                    and len(self.obj_data['ra']) != len(q_rc) ):
-                    raise MEDSCreationError('Not all objects were found in first image for '
-                                            'MEDS making, which was marked as the coadd')
+            if (
+                self["first_image_is_coadd"]
+                and self["check_in_coadd"]
+                and file_id == 0
+                and len(self.obj_data["ra"]) != len(q_rc)
+            ):
 
-
+                raise MEDSCreationError(
+                    "Not all objects were found in first image for "
+                    "MEDS making, which was marked as the coadd"
+                )
 
             # compose them
             q = q[q_rc]
@@ -648,48 +656,48 @@ class MEDSMaker(dict):
             # fill in the object_data structure
 
             # note q_rc since pos was created using obj_data[q]
-            qrow = pos['zrow'][q_rc]
-            qcol = pos['zcol'][q_rc]
+            qrow = pos["zrow"][q_rc]
+            qcol = pos["zcol"][q_rc]
 
-            icut = self.obj_data['ncutout'][q]
-            self.obj_data['file_id'][q,icut] = file_id
-            self.obj_data['orig_row'][q,icut] = qrow
-            self.obj_data['orig_col'][q,icut] = qcol
+            icut = self.obj_data["ncutout"][q]
+            self.obj_data["file_id"][q, icut] = file_id
+            self.obj_data["orig_row"][q, icut] = qrow
+            self.obj_data["orig_col"][q, icut] = qcol
 
             # this results in the object center being close to
             # the natural center (dim-1.)/2.
-            ostart_row = qrow.astype('i4') - half_box_size[q] + 1
-            ostart_col = qcol.astype('i4') - half_box_size[q] + 1
-            crow       = qrow - ostart_row
-            ccol       = qcol - ostart_col
+            ostart_row = qrow.astype("i4") - half_box_size[q] + 1
+            ostart_col = qcol.astype("i4") - half_box_size[q] + 1
+            crow = qrow - ostart_row
+            ccol = qcol - ostart_col
 
-            self.obj_data['orig_start_row'][q,icut] = ostart_row
-            self.obj_data['orig_start_col'][q,icut] = ostart_col
-            self.obj_data['cutout_row'][q,icut]     = crow
-            self.obj_data['cutout_col'][q,icut]     = ccol
+            self.obj_data["orig_start_row"][q, icut] = ostart_row
+            self.obj_data["orig_start_col"][q, icut] = ostart_col
+            self.obj_data["cutout_row"][q, icut] = crow
+            self.obj_data["cutout_col"][q, icut] = ccol
 
             # do jacobian, in original, not-offset coords
             # note q_rc since pos was created using obj_data[q]
-            x = pos['wcs_col'][q_rc]
-            y = pos['wcs_row'][q_rc]
-            if 'color' in self.obj_data.dtype.names:
-                color = self.obj_data['color'][q]
+            x = pos["wcs_col"][q_rc]
+            y = pos["wcs_row"][q_rc]
+            if "color" in self.obj_data.dtype.names:
+                color = self.obj_data["color"][q]
             else:
                 color = None
 
             jacob = self._get_jacobians(x, y, wcs, color=color)
 
             # jacob is a tuple of arrays
-            self.obj_data['dudcol'][q,icut] = jacob[0]
-            self.obj_data['dudrow'][q,icut] = jacob[1]
-            self.obj_data['dvdcol'][q,icut] = jacob[2]
-            self.obj_data['dvdrow'][q,icut] = jacob[3]
+            self.obj_data["dudcol"][q, icut] = jacob[0]
+            self.obj_data["dudrow"][q, icut] = jacob[1]
+            self.obj_data["dvdcol"][q, icut] = jacob[2]
+            self.obj_data["dvdrow"][q, icut] = jacob[3]
 
             # increment
-            self.obj_data['ncutout'][q] += 1
+            self.obj_data["ncutout"][q] += 1
 
-        w,=numpy.where(self.obj_data['ncutout'] > 0)
-        print('%d/%d had ncut > 0' % (w.size, self.obj_data.size))
+        (w,) = numpy.where(self.obj_data["ncutout"] > 0)
+        print("%d/%d had ncut > 0" % (w.size, self.obj_data.size))
 
         self.obj_data = self._make_resized_data(self.obj_data)
         self._set_start_rows_and_pixel_count()
@@ -712,30 +720,30 @@ class MEDSMaker(dict):
         return jacob
 
     def _get_pos_and_bounds(self, obj_data, file_id):
-        nim  = self.image_info.size
-        impath=self.image_info['image_path'][file_id].strip()
-        position_offset=self.image_info['position_offset'][file_id]
+        nim = self.image_info.size
+        impath = self.image_info["image_path"][file_id].strip()
+        position_offset = self.image_info["position_offset"][file_id]
 
-        print("file %4d of %4d: '%s'" % (file_id+1,nim,impath))
+        print("file %4d of %4d: '%s'" % (file_id + 1, nim, impath))
 
         wcs = self._get_wcs(file_id)
 
         # monkey patching in the position_offset into wcs
-        wcs.position_offset=position_offset
+        wcs.position_offset = position_offset
 
-        q = self._do_rough_sky_cut(wcs, obj_data['ra'], obj_data['dec'])
-        print('    first cut:  %6d of %6d objects' % (q.size,obj_data.size))
+        q = self._do_rough_sky_cut(wcs, obj_data["ra"], obj_data["dec"])
+        print("    first cut:  %6d of %6d objects" % (q.size, obj_data.size))
 
-        if 'color' in obj_data.dtype.names:
-            color = obj_data['color'][q]
+        if "color" in obj_data.dtype.names:
+            color = obj_data["color"][q]
         else:
             color = None
 
         # this is the bottleneck
         pos = self._do_sky2image(
             wcs,
-            obj_data['ra'][q],
-            obj_data['dec'][q],
+            obj_data["ra"][q],
+            obj_data["dec"][q],
             color=color,
         )
 
@@ -745,99 +753,113 @@ class MEDSMaker(dict):
 
         # for coadds add buffer if requested
         if file_id == 0:
-            bnds.rowmin -= self['coadd_bounds_buffer_rowcol']
-            bnds.rowmax += self['coadd_bounds_buffer_rowcol']
-            bnds.colmin -= self['coadd_bounds_buffer_rowcol']
-            bnds.colmax += self['coadd_bounds_buffer_rowcol']
+            bnds.rowmin -= self["coadd_bounds_buffer_rowcol"]
+            bnds.rowmax += self["coadd_bounds_buffer_rowcol"]
+            bnds.colmin -= self["coadd_bounds_buffer_rowcol"]
+            bnds.colmax += self["coadd_bounds_buffer_rowcol"]
 
         return wcs, pos, bnds, q
 
     def _force_into_coadd_bounds(self, q_rc, pos, bnds):
-        from numpy import min,max
+        from numpy import min, max
 
-        m='    pre-forced obj row range (min, max - image row max):  % e % e'
-        print(m % (min(pos['zrow'][q_rc]),max(pos['zrow'][q_rc]-bnds.rowmax)))
-        m='    pre-forced obj col range (min, max - image col max):  % e % e'
-        print(m % (min(pos['zcol'][q_rc]),max(pos['zcol'][q_rc]-bnds.colmax)))
+        m = "    pre-forced obj row range (min, max - image row max):  % e % e"
+        print(
+            m % (min(pos["zrow"][q_rc]),
+                 max(pos["zrow"][q_rc] - bnds.rowmax))
+        )
+        m = "    pre-forced obj col range (min, max - image col max):  % e % e"
+        print(
+            m % (min(pos["zcol"][q_rc]), max(pos["zcol"][q_rc] - bnds.colmax))
+        )
 
-        rn = numpy.clip(pos['zrow'][q_rc], bnds.rowmin, bnds.rowmax)
-        cn = numpy.clip(pos['zcol'][q_rc], bnds.colmin, bnds.colmax)
-        num_forced = len(numpy.where((rn != pos['zrow'][q_rc]) | (cn != pos['zcol'][q_rc]))[0])
-        pos['zrow'][q_rc] = rn
-        pos['zcol'][q_rc] = cn
+        rn = numpy.clip(pos["zrow"][q_rc], bnds.rowmin, bnds.rowmax)
+        cn = numpy.clip(pos["zcol"][q_rc], bnds.colmin, bnds.colmax)
+        num_forced = len(
+            numpy.where(
+                (rn != pos["zrow"][q_rc]) | (cn != pos["zcol"][q_rc]))[0]
+        )
+        pos["zrow"][q_rc] = rn
+        pos["zcol"][q_rc] = cn
         del rn
         del cn
 
-        m='    post-forced obj row range (min, max - image row max): % e % e'
-        print(m % (min(pos['zrow'][q_rc]),max(pos['zrow'][q_rc]-bnds.rowmax)))
-        m='    post-forced obj col range (min, max - image col max): % e % e'
-        print(m % (min(pos['zcol'][q_rc]),max(pos['zcol'][q_rc]-bnds.colmax)))
-        print('    # of objects forced into coadd: %d' % num_forced)
+        m = "    post-forced obj row range (min, max - image row max): % e % e"
+        print(
+            m % (min(pos["zrow"][q_rc]), max(pos["zrow"][q_rc] - bnds.rowmax))
+        )
+        m = "    post-forced obj col range (min, max - image col max): % e % e"
+        print(
+            m % (min(pos["zcol"][q_rc]), max(pos["zcol"][q_rc] - bnds.colmax))
+        )
+        print("    # of objects forced into coadd: %d" % num_forced)
 
         # make sure stuff that is forced made it
-        in_in_bnds = bnds.contains_points(pos['zrow'][q_rc], pos['zcol'][q_rc])
+        in_in_bnds = bnds.contains_points(pos["zrow"][q_rc], pos["zcol"][q_rc])
         if not numpy.all(in_in_bnds):
-            raise MEDSCreationError('Not all objects were found in coadd')
+            raise MEDSCreationError("Not all objects were found in coadd")
 
     def _set_start_rows_and_pixel_count(self):
         """
         set the total number of pixels in each mosaic
         """
-        print('setting start rows and pixel count')
-        data=self.obj_data
-        nobj=data.size
+        print("setting start rows and pixel count")
+        data = self.obj_data
+        nobj = data.size
 
-        npix = (data['ncutout']*data['box_size']**2).sum()
+        npix = (data["ncutout"] * data["box_size"] ** 2).sum()
         self.total_pixels = npix
 
-        npix=0
+        npix = 0
         current_row = 0
-        for iobj in xrange(nobj):
-            ncut = data['ncutout'][iobj]
+        for iobj in range(nobj):
+            ncut = data["ncutout"][iobj]
             if ncut > 0:
-                bsize=data['box_size'][iobj]
-                npix_per_cutout = bsize*bsize
+                bsize = data["box_size"][iobj]
+                npix_per_cutout = bsize * bsize
 
-                for icut in xrange(ncut):
-                    data['start_row'][iobj,icut] = current_row
+                for icut in range(ncut):
+                    data["start_row"][iobj, icut] = current_row
                     current_row += npix_per_cutout
                     npix += npix_per_cutout
 
         if self.total_pixels != npix:
-            raise ValueError("total_pixels %d != "
-                             "npix %d" % (self.total_pixels, npix))
+            raise ValueError(
+                "total_pixels %d != " "npix %d" % (self.total_pixels, npix)
+            )
 
-        print('total pixels:',self.total_pixels)
+        print("total pixels:", self.total_pixels)
 
     def _get_wcs(self, file_id):
         """
         either load the wcs from the image_info, or from
         the image header
         """
+
         if self.psf_data is not None:
             psf = self.psf_data[file_id]
-            if hasattr(psf, 'get_wcs'):
+            if hasattr(psf, "get_wcs"):
                 wcs = psf.get_wcs()
 
-                impath = self.image_info['image_path'][file_id].strip()
-                ext = self.image_info['image_ext'][file_id]
+                impath = self.image_info["image_path"][file_id].strip()
+                ext = self.image_info["image_ext"][file_id]
                 hdr = fitsio.read_header(impath, ext=ext)
 
-                if 'znaxis1' in hdr:
-                    naxis = numpy.array([hdr['znaxis1'], hdr['znaxis2']])
+                if "znaxis1" in hdr:
+                    naxis = numpy.array([hdr["znaxis1"], hdr["znaxis2"]])
                 else:
-                    naxis = numpy.array([hdr['naxis1'], hdr['naxis2']])
+                    naxis = numpy.array([hdr["naxis1"], hdr["naxis2"]])
 
                 wcs.set_naxis(naxis)
 
                 return wcs
 
-        if 'wcs' in self.image_info.dtype.names:
-            wcs_string = self.image_info['wcs'][file_id]
+        if "wcs" in self.image_info.dtype.names:
+            wcs_string = self.image_info["wcs"][file_id]
             wcs_data = json.loads(wcs_string)
         else:
-            impath=self.image_info['image_path'][file_id].strip()
-            ext=self.image_info['image_ext'][file_id]
+            impath = self.image_info["image_path"][file_id].strip()
+            ext = self.image_info["image_ext"][file_id]
             wcs_data = fitsio.read_header(impath, ext=ext)
 
         wcs = eu.wcsutil.WCS(wcs_data)
@@ -849,16 +871,14 @@ class MEDSMaker(dict):
         the actual maximum ncutout
         """
 
-
-        nmax = odata['file_id'].shape[1]
-        new_nmax = odata['ncutout'].max()
+        new_nmax = odata["ncutout"].max()
         if new_nmax < 2:
             new_nmax = 2
         temp_obj_data = odata
 
         nobj = temp_obj_data.size
 
-        extra_fields = self._get_extra_fields(odata,new_nmax)
+        extra_fields = self._get_extra_fields(odata, new_nmax)
         new_data = get_meds_output_struct(
             nobj,
             new_nmax,
@@ -876,14 +896,13 @@ class MEDSMaker(dict):
 
                 lshape = len(new_data[name].shape)
                 if lshape > 1 and name in required_fields or name in psf_names:
-                    new_data[name][:,:] = temp_obj_data[name][:,0:new_nmax]
+                    new_data[name][:, :] = temp_obj_data[name][:, 0:new_nmax]
                 else:
                     new_data[name][:] = temp_obj_data[name][:]
 
         del temp_obj_data
 
         return new_data
-
 
     def _do_sky2image(self, wcs, ra, dec, color=None):
         """
@@ -894,6 +913,7 @@ class MEDSMaker(dict):
         # slower or the same due to overheads
         if self._use_joblib and len(ra) > 250:
             import joblib
+
             n_jobs = joblib.externals.loky.cpu_count()
 
             if self._joblib_max_workers > 0:
@@ -913,28 +933,24 @@ class MEDSMaker(dict):
                 if color is not None:
                     jobs.append(
                         joblib.delayed(_sky2image_func)(
-                            wcs,
-                            ra[start:end],
-                            dec[start:end],
+                            wcs, ra[start:end], dec[start:end],
                             color=color[start:end]
                         )
                     )
                 else:
                     jobs.append(
                         joblib.delayed(_sky2image_func)(
-                            wcs,
-                            ra[start:end],
-                            dec[start:end]
+                            wcs, ra[start:end], dec[start:end]
                         )
                     )
 
             with joblib.parallel_backend(
-                    self._joblib_backend,
-                    inner_max_num_threads=self._joblib_threads):
+                self._joblib_backend,
+                inner_max_num_threads=self._joblib_threads
+            ):
                 outputs = joblib.Parallel(
-                    n_jobs=n_jobs,
-                    max_nbytes=None,
-                    verbose=50)(jobs)
+                    n_jobs=n_jobs, max_nbytes=None, verbose=50,
+                )(jobs)
 
             col = []
             row = []
@@ -955,17 +971,16 @@ class MEDSMaker(dict):
         positions = make_wcs_positions(row, col, wcs.position_offset)
         return positions
 
-
     def _do_rough_sky_cut(self, wcs, ra, dec):
         """
         rough sky bounds cut
         """
 
-        sky_bnds,ra_ccd,dec_ccd = self._get_rough_sky_bounds(wcs)
-        u,v = radec_to_uv(ra,dec,ra_ccd,dec_ccd)
+        sky_bnds, ra_ccd, dec_ccd = self._get_rough_sky_bounds(wcs)
+        u, v = radec_to_uv(ra, dec, ra_ccd, dec_ccd)
 
         in_sky_bnds = sky_bnds.contains_points(u, v)
-        q, = numpy.where(in_sky_bnds == True)
+        (q,) = numpy.where(in_sky_bnds)
 
         return q
 
@@ -984,16 +999,16 @@ class MEDSMaker(dict):
         # set order so that pixels are square-ish
         if ncol < nrow:
             order_col = order
-            order_row = numpy.ceil(float(nrow)/float(ncol))
+            order_row = numpy.ceil(float(nrow) / float(ncol))
         else:
             order_row = order
-            order_col = numpy.ceil(float(ncol)/float(nrow))
+            order_col = numpy.ceil(float(ncol) / float(nrow))
 
         # construct a grid - trying to be pythonic,
         #  but a double loop would be clearer
-        rows = numpy.arange(order_row+1)*(nrow-1.0)/order_row
-        cols = numpy.arange(order_col+1)*(ncol-1.0)/order_col
-        rows,cols = numpy.meshgrid(rows,cols)
+        rows = numpy.arange(order_row + 1) * (nrow - 1.0) / order_row
+        cols = numpy.arange(order_col + 1) * (ncol - 1.0) / order_col
+        rows, cols = numpy.meshgrid(rows, cols)
         rows = rows.ravel()
         cols = cols.ravel()
 
@@ -1001,29 +1016,32 @@ class MEDSMaker(dict):
         # the default value
 
         pos = make_wcs_positions(rows, cols, wcs.position_offset, inverse=True)
-        ra,dec = wcs.image2sky(pos['wcs_col'], pos['wcs_row'])
+        ra, dec = wcs.image2sky(pos["wcs_col"], pos["wcs_row"])
 
         # get ccd center
-        row_ccd = nrow/2.0
-        col_ccd = ncol/2.0
-        pos_ccd = make_wcs_positions(row_ccd, col_ccd, wcs.position_offset, inverse=True)
-        ra_ccd,dec_ccd = wcs.image2sky(pos_ccd['wcs_col'][0], pos_ccd['wcs_row'][0])
+        row_ccd = nrow / 2.0
+        col_ccd = ncol / 2.0
+        pos_ccd = make_wcs_positions(
+            row_ccd, col_ccd, wcs.position_offset, inverse=True
+        )
+        ra_ccd, dec_ccd = wcs.image2sky(
+            pos_ccd["wcs_col"][0], pos_ccd["wcs_row"][0],
+        )
 
         # get u,v - ccd is at 0,0 by def
-        u,v = radec_to_uv(ra,dec,ra_ccd,dec_ccd)
+        u, v = radec_to_uv(ra, dec, ra_ccd, dec_ccd)
 
         # build bounds with buffer and cos(dec) factors
-        vrad = numpy.deg2rad(v/3600.0) # arcsec to degrees
-        ufac  = numpy.cos(vrad).min()
+        vrad = numpy.deg2rad(v / 3600.0)  # arcsec to degrees
+        ufac = numpy.cos(vrad).min()
 
-        ubuff  = self['bounds_buffer_uv']/ufac
-        vbuff = self['bounds_buffer_uv']
-        sky_bnds = Bounds(u.min()  - ubuff,
-                          u.max()  + ubuff,
-                          v.min() - vbuff,
-                          v.max() + vbuff)
+        ubuff = self["bounds_buffer_uv"] / ufac
+        vbuff = self["bounds_buffer_uv"]
+        sky_bnds = Bounds(
+            u.min() - ubuff, u.max() + ubuff, v.min() - vbuff, v.max() + vbuff
+        )
 
-        return sky_bnds,ra_ccd,dec_ccd
+        return sky_bnds, ra_ccd, dec_ccd
 
     def _get_image_bounds(self, wcs):
         """
@@ -1038,10 +1056,9 @@ class MEDSMaker(dict):
 
         pos = make_wcs_positions(rvals, cvals, wcs.position_offset)
 
-        bnds = Bounds(pos['zrow'][0],
-                      pos['zrow'][1],
-                      pos['zcol'][0],
-                      pos['zcol'][1])
+        bnds = Bounds(
+            pos["zrow"][0], pos["zrow"][1], pos["zcol"][0], pos["zcol"][1],
+        )
 
         return bnds
 
@@ -1053,57 +1070,54 @@ class MEDSMaker(dict):
         we will move this into the more general MEDSMaker that will
         take the catalogs as input
         """
-        w,=numpy.where( (self.obj_data['box_size'] % 2) != 0)
+        (w,) = numpy.where((self.obj_data["box_size"] % 2) != 0)
         if w.size > 0:
-            self.obj_data['box_size'][w] += 1
-
+            self.obj_data["box_size"][w] += 1
 
     def _set_cutout_types(self):
 
-        cutout_types = copy.deepcopy(self['cutout_types'])
+        cutout_types = copy.deepcopy(self["cutout_types"])
 
         # make sure 'image' is at the front
-        if 'image' in cutout_types:
-            cutout_types.remove('image')
-        cutout_types = ['image'] + cutout_types
+        if "image" in cutout_types:
+            cutout_types.remove("image")
+        cutout_types = ["image"] + cutout_types
 
-        bad_types=[]
+        bad_types = []
         for ctype in cutout_types:
             if ctype not in SUPPORTED_CUTOUT_TYPES:
                 bad_types.append(ctype)
 
         if len(bad_types) != 0:
-            st=', '.join(bad_types)
+            st = ", ".join(bad_types)
             raise ValueError("unsupported cutout types: '%s'" % st)
 
-        self['cutout_types'] = cutout_types
-        print('writing cutouts for:',cutout_types)
+        self["cutout_types"] = cutout_types
+        print("writing cutouts for:", cutout_types)
 
     def _set_meta_data(self, meta_data_in):
         """
         add some fields to the input metadata for software versions
         """
-        version_fmt = 'S20'
-        numpy_version=numpy.__version__
-        esutil_version=eu.__version__
-        fitsio_version=fitsio.__version__
-        meds_version=defaults.__version__
+
+        numpy_version = numpy.__version__
+        esutil_version = eu.__version__
+        fitsio_version = fitsio.__version__
+        meds_version = defaults.__version__
 
         if meta_data_in is not None:
-            mnames=meta_data_in.dtype.names
-            mdt = copy.deepcopy( meta_data_in.dtype.descr )
-            nmeta=meta_data_in.size
+            mdt = copy.deepcopy(meta_data_in.dtype.descr)
+            nmeta = meta_data_in.size
         else:
-            mnames=[]
             mdt = []
-            nmeta=1
+            nmeta = 1
 
         mdt += [
-            ('numpy_version','S%d' % len(numpy_version)),
-            ('esutil_version','S%d' % len(esutil_version)),
-            ('fitsio_version','S%d' % len(fitsio_version)),
-            ('meds_version','S%d' % len(meds_version)),
-            ('meds_fmt_version','S%d' % len(MEDS_FMT_VERSION)),
+            ("numpy_version", "S%d" % len(numpy_version)),
+            ("esutil_version", "S%d" % len(esutil_version)),
+            ("fitsio_version", "S%d" % len(fitsio_version)),
+            ("meds_version", "S%d" % len(meds_version)),
+            ("meds_fmt_version", "S%d" % len(MEDS_FMT_VERSION)),
         ]
 
         meta_data = zeros(nmeta, dtype=mdt)
@@ -1111,13 +1125,13 @@ class MEDSMaker(dict):
         if meta_data_in is not None:
             eu.numpy_util.copy_fields(meta_data_in, meta_data)
 
-        meta_data['numpy_version'] = numpy_version
-        meta_data['esutil_version'] = esutil_version
-        meta_data['fitsio_version'] = fitsio_version
-        meta_data['meds_version'] = meds_version
-        meta_data['meds_fmt_version'] = MEDS_FMT_VERSION
+        meta_data["numpy_version"] = numpy_version
+        meta_data["esutil_version"] = esutil_version
+        meta_data["fitsio_version"] = fitsio_version
+        meta_data["meds_version"] = meds_version
+        meta_data["meds_fmt_version"] = MEDS_FMT_VERSION
 
-        self.meta_data=meta_data
+        self.meta_data = meta_data
 
     def _set_obj_data(self, obj_data):
         """
@@ -1135,39 +1149,45 @@ class MEDSMaker(dict):
             currently only accept a list of galsim objects
             """
             if len(psf_data) != self.image_info.size:
-                raise ValueError("psf_data must be a list of same "
-                                 "size as image info struct")
+                raise ValueError(
+                    "psf_data must be a list of same "
+                    "size as image info struct"
+                )
 
-            assert 'psf' in self, 'you must have a psf entry when loading psfs'
+            assert "psf" in self, "you must have a psf entry when loading psfs"
 
-        self.psf_data=psf_data
+        self.psf_data = psf_data
+
+    def _set_psf_info(self, psf_info):
+        if psf_info is not None:
+            assert isinstance(psf_info, numpy.ndarray)
+        self.psf_info = psf_info
 
     def _set_psf_layout(self):
         """
         set the box sizes and start row for each psf image
         """
         if self.psf_data is None:
-            raise ValueError("_set_psf_layout called "
-                             "with no psf data set")
+            raise ValueError("_set_psf_layout called " "with no psf data set")
 
-        print('setting psf layout')
+        print("setting psf layout")
 
-        obj_data=self.obj_data
-        psf_data=self.psf_data
+        obj_data = self.obj_data
+        psf_data = self.psf_data
 
         total_psf_pixels = 0
 
         psf_start_row = 0
         for iobj in range(obj_data.size):
-            for icut in range(obj_data['ncutout'][iobj]):
+            for icut in range(obj_data["ncutout"][iobj]):
 
-                row = obj_data['orig_row'][iobj, icut]
-                col = obj_data['orig_col'][iobj, icut]
-                file_id = obj_data['file_id'][iobj,icut]
+                row = obj_data["orig_row"][iobj, icut]
+                col = obj_data["orig_col"][iobj, icut]
+                file_id = obj_data["file_id"][iobj, icut]
 
                 p = psf_data[file_id]
 
-                if hasattr(p, 'get_rec_shape'):
+                if hasattr(p, "get_rec_shape"):
                     psf_shape = p.get_rec_shape(row, col)
                 else:
                     psf_shape = p.get_rec(row, col).shape
@@ -1176,15 +1196,14 @@ class MEDSMaker(dict):
 
                 cen = p.get_center(row, col)
 
-                obj_data['psf_row_size'][iobj,icut] = psf_shape[0]
-                obj_data['psf_col_size'][iobj,icut] = psf_shape[1]
-                obj_data['psf_cutout_row'][iobj,icut] = cen[0]
-                obj_data['psf_cutout_col'][iobj,icut] = cen[1]
-                obj_data['psf_start_row'][iobj,icut] = psf_start_row
+                obj_data["psf_row_size"][iobj, icut] = psf_shape[0]
+                obj_data["psf_col_size"][iobj, icut] = psf_shape[1]
+                obj_data["psf_cutout_row"][iobj, icut] = cen[0]
+                obj_data["psf_cutout_col"][iobj, icut] = cen[1]
+                obj_data["psf_start_row"][iobj, icut] = psf_start_row
 
                 psf_start_row += psf_npix
                 total_psf_pixels += psf_npix
-
 
         self.total_psf_pixels = total_psf_pixels
 
@@ -1194,13 +1213,13 @@ class MEDSMaker(dict):
         """
         min_st = self._get_minimal_meds_input()
 
-        missing=[]
+        missing = []
         for name in min_st.dtype.names:
             if name not in obj_data.dtype.names:
                 missing.append(name)
 
         if len(missing) > 0:
-            missing=', '.join(missing)
+            missing = ", ".join(missing)
             raise ValueError("missing fields from obj_data: '%s'" % missing)
 
     def _get_minimal_meds_input(self):
@@ -1213,8 +1232,8 @@ class MEDSMaker(dict):
         """
 
         # we will fix this later
-        if 'ncutout_max' in self:
-            nmax=self['ncutout_max']
+        if "ncutout_max" in self:
+            nmax = self["ncutout_max"]
         else:
             # this could be way too large!
             nmax = self.image_info.size
@@ -1246,10 +1265,9 @@ class MEDSMaker(dict):
         skip = [dt[0] for dt in pdt]
 
         for dt in obj_data.dtype.descr:
-            name=dt[0]
+            name = dt[0]
 
-            if (name not in full_st.dtype.names
-                    and name not in skip):
+            if name not in full_st.dtype.names and name not in skip:
                 extra_fields.append(dt)
 
         if self.psf_data is not None:
@@ -1259,17 +1277,16 @@ class MEDSMaker(dict):
 
     def _get_psf_dtype(self, nmax):
         return [
-            ('psf_row_size','i4',nmax),
-            ('psf_col_size','i4',nmax),
-            ('psf_cutout_row','f8',nmax),
-            ('psf_cutout_col','f8',nmax),
-            ('psf_start_row','i8',nmax),
-
-            #('psf_box_size','i4'),
-            #('psf_cutout_row','f8',nmax),
-            #('psf_cutout_col','f8',nmax),
-            #('psf_sigma','f4',nmax),
-            #('psf_start_row','i8',nmax),
+            ("psf_row_size", "i4", nmax),
+            ("psf_col_size", "i4", nmax),
+            ("psf_cutout_row", "f8", nmax),
+            ("psf_cutout_col", "f8", nmax),
+            ("psf_start_row", "i8", nmax),
+            # ('psf_box_size','i4'),
+            # ('psf_cutout_row','f8',nmax),
+            # ('psf_cutout_col','f8',nmax),
+            # ('psf_sigma','f4',nmax),
+            # ('psf_start_row','i8',nmax),
         ]
 
     def _set_image_info(self, image_info):
@@ -1279,7 +1296,6 @@ class MEDSMaker(dict):
         self._check_image_info(image_info)
         self.image_info = image_info.copy()
 
-
     def _check_image_info(self, image_info):
         """
         check required fields
@@ -1288,32 +1304,32 @@ class MEDSMaker(dict):
         like that in get_image_info_dtype
         """
 
-        plen=2
+        plen = 2
         dt = numpy.dtype(get_image_info_dtype(plen))
 
-        missing=[]
+        missing = []
         for name in dt.names:
             if name not in image_info.dtype.names:
                 missing.append(name)
 
         if len(missing) > 0:
-            s=', '.join(missing)
+            s = ", ".join(missing)
             raise ValueError("missing image_info entries: '%s'" % s)
 
     def _set_extra_config(self):
         """
         set extra configuration parameters that are not user-controlled
         """
-        self['object_data_extname']    = 'object_data'
-        self['image_info_extname']     = 'image_info'
-        self['metadata_extname']       = 'metadata'
+        self["object_data_extname"] = "object_data"
+        self["image_info_extname"] = "image_info"
+        self["metadata_extname"] = "metadata"
 
-        self['image_cutout_extname']   = 'image_cutouts'
-        self['weight_cutout_extname']  = 'weight_cutouts'
-        self['seg_cutout_extname']     = 'seg_cutouts'
-        self['bmask_cutout_extname']   = 'bmask_cutouts'
-        self['ormask_cutout_extname']  = 'ormask_cutouts'
-        self['noise_cutout_extname']  = 'noise_cutouts'
+        self["image_cutout_extname"] = "image_cutouts"
+        self["weight_cutout_extname"] = "weight_cutouts"
+        self["seg_cutout_extname"] = "seg_cutouts"
+        self["bmask_cutout_extname"] = "bmask_cutouts"
+        self["ormask_cutout_extname"] = "ormask_cutouts"
+        self["noise_cutout_extname"] = "noise_cutouts"
 
     def _load_config(self, config):
         """
@@ -1323,32 +1339,35 @@ class MEDSMaker(dict):
 
         if config is not None:
             if not isinstance(config, dict):
-                raise RuntimeError("config must be a dict, "
-                                   "got %s" % type(config))
+                raise RuntimeError(
+                    "config must be a dict, " "got %s" % type(config)
+                )
             self.update(config)
 
         self._set_cutout_types()
 
         # need this to be unsigned
-        allowed = self['bitmask_allowed']
-        allowed = numpy.array([allowed],dtype='u4')
-        self['bitmask_allowed'] = allowed[0]
-        self['bitmask_allowed_inv'] = ~allowed[0]
+        allowed = self["bitmask_allowed"]
+        allowed = numpy.array([allowed], dtype="u4")
+        self["bitmask_allowed"] = allowed[0]
+        self["bitmask_allowed_inv"] = ~allowed[0]
 
         # support old way
-        if 'psf_type' in self:
-            self['psf'] = {'type': self['psf_type']}
+        if "psf_type" in self:
+            self["psf"] = {"type": self["psf_type"]}
 
-        if 'joblib' in self:
+        if "joblib" in self:
             self._use_joblib = True
         else:
-            self._use_joblib = self.get('use_joblib', False)
+            self._use_joblib = self.get("use_joblib", False)
 
-        self._joblib_backend = self.get(
-            'joblib', {}).get('backend', 'multiprocessing')
-        self._joblib_max_workers = self.get(
-            'joblib', {}).get('max_workers', -1)
-        if self._joblib_backend == 'loky':
+        self._joblib_backend = self.get("joblib", {}).get(
+            "backend", "multiprocessing",
+        )
+        self._joblib_max_workers = self.get("joblib", {}).get(
+            "max_workers", -1,
+        )
+        if self._joblib_backend == "loky":
             self._joblib_threads = 1
         else:
             self._joblib_threads = None
@@ -1356,10 +1375,14 @@ class MEDSMaker(dict):
 
 def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
     import joblib
+
     joblib.dump(
-        [psf_data[file_id].get_rec(row, col)
-         for file_id, row, col in zip(file_ids, rows, cols)],
-        output_path)
+        [
+            psf_data[file_id].get_rec(row, col)
+            for file_id, row, col in zip(file_ids, rows, cols)
+        ],
+        output_path,
+    )
     return output_path
 
 
