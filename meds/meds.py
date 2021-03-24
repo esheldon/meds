@@ -1055,7 +1055,11 @@ class MEDS(object):
         elif type == "noise":
             return "noise_cutouts"
         else:
-            raise ValueError("bad cutout type '%s'" % type)
+            ext = "%s_cutouts" % type
+            if ext not in self._fits:
+                raise ValueError("bad cutout type '%s'" % type)
+            else:
+                return ext
 
     def _check_indices(self, iobj, icutout=None):
         if iobj >= self._cat.size:
