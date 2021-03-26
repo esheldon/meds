@@ -1,0 +1,7 @@
+biggles
+esutil
+fitsio
+joblib
+ngmix
+numpy
+pyyaml
