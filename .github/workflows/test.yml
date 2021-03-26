@@ -32,7 +32,7 @@ jobs:
           conda install -q mamba
 
           # requirements for meds
-          mamba install -q -r requirements.txt
+          mamba install -q --file requirements.txt
 
           # installs for testing
           mamba install -q \
