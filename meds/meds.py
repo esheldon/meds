@@ -1032,8 +1032,7 @@ class MEDS(object):
     def _get_extension_name(self, type):
         ext = "%s_cutouts" % type
         if ext not in self._fits:
-            if ext not in self._fits:
-                raise ValueError("bad cutout type '%s'" % type)
+            raise ValueError("bad cutout type '%s'" % type)
         return ext
 
     def _check_indices(self, iobj, icutout=None):
