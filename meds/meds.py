@@ -3,11 +3,6 @@ import numpy
 import fitsio
 
 try:
-    xrange  # noqa: F821
-except Exception:
-    xrange = range
-
-try:
     from . import _uberseg
     _have_c_ubserseg = True
 except ImportError:
@@ -308,11 +303,10 @@ class MEDS(object):
         """
 
         if not self.has_psf():
-            raise RuntimeError("this MEDS file has no 'psf' extension")
+            raise ValueError("this MEDS file has no 'psf' extension")
 
         self._check_indices(iobj, icutout=icutout)
 
-        cat = self._cat
         shape = self._get_psf_shape(iobj, icutout)
         npix = shape[0]*shape[1]
 
@@ -328,8 +322,8 @@ class MEDS(object):
         if 'psf_row_size' in cat.dtype.names:
             if len(cat['psf_row_size'].shape) > 1:
                 shape = (
-                    cat['psf_row_size'][iobj,icutout],
-                    cat['psf_col_size'][iobj,icutout],
+                    cat['psf_row_size'][iobj, icutout],
+                    cat['psf_col_size'][iobj, icutout],
                 )
             else:
                 shape = (
@@ -360,7 +354,7 @@ class MEDS(object):
             A list of the PSFs as numpy arrays.
         """
         ncut = self['ncutout'][iobj]
-        return [self.get_psf(iobj, icut) for icut in xrange(ncut)]
+        return [self.get_psf(iobj, icut) for icut in range(ncut)]
 
     def get_cweight_cutout(self, iobj, icutout, restrict_to_seg=False):
         """Composite the weight and seg maps, interpolating seg map from the
@@ -532,7 +526,7 @@ class MEDS(object):
         """
 
         useg_list = []
-        for i in xrange(self['ncutout'][iobj]):
+        for i in range(self['ncutout'][iobj]):
             uberseg = self.get_uberseg(
                 iobj,
                 i,
@@ -920,7 +914,7 @@ class MEDS(object):
         """
         self._check_indices(iobj)
         jlist = []
-        for icutout in xrange(self['ncutout'][iobj]):
+        for icutout in range(self['ncutout'][iobj]):
             j = self.get_jacobian(iobj, icutout)
             jlist.append(j)
 
@@ -1018,12 +1012,6 @@ class MEDS(object):
             crow = crow.round().astype('i8')
             ccol = ccol.round().astype('i8')
 
-            '''
-            wbad=numpy.where(   (crow < 0) | (crow >= coadd_seg.shape[0])
-                              & (ccol < 0) | (ccol >= coadd_seg.shape[1]) )
-            if wbad[0].size != 0:
-                cim[wbad] = 0
-            '''
             # clipping makes the notation easier
             crow = crow.clip(0, coadd_seg.shape[0]-1)
             ccol = ccol.clip(0, coadd_seg.shape[1]-1)
@@ -1042,24 +1030,11 @@ class MEDS(object):
         return cim
 
     def _get_extension_name(self, type):
-        if type == 'image':
-            return "image_cutouts"
-        elif type == "weight":
-            return "weight_cutouts"
-        elif type == "seg":
-            return "seg_cutouts"
-        elif type == "bmask":
-            return "bmask_cutouts"
-        elif type == "ormask":
-            return "ormask_cutouts"
-        elif type == "noise":
-            return "noise_cutouts"
-        else:
-            ext = "%s_cutouts" % type
+        ext = "%s_cutouts" % type
+        if ext not in self._fits:
             if ext not in self._fits:
                 raise ValueError("bad cutout type '%s'" % type)
-            else:
-                return ext
+        return ext
 
     def _check_indices(self, iobj, icutout=None):
         if iobj >= self._cat.size:
@@ -1112,7 +1087,7 @@ def split_mosaic(mosaic):
     ncutout = mosaic.shape[0]//box_size
 
     imlist = []
-    for i in xrange(ncutout):
+    for i in range(ncutout):
         r1 = i*box_size
         r2 = (i+1)*box_size
         imlist.append(mosaic[r1:r2, :])
@@ -1178,7 +1153,7 @@ def reject_outliers(imlist, wtlist, nsigma=5.0, A=0.3):
 
     med = numpy.median(imstack, axis=0)
 
-    for i in xrange(nim):
+    for i in range(nim):
         im = imlist[i]
         wt = wtlist[i]
 

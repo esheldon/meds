@@ -1,3 +1,4 @@
+# flake8: noqa
 from .defaults import __version__
 from . import meds
 
