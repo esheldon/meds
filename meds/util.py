@@ -1,17 +1,17 @@
 from __future__ import print_function
-import os
 import numpy
-import tempfile
-import subprocess
 
 DEFVAL = -9999
-IMAGE_INFO_TYPES = ['image','weight','seg','bmask','bkg']
+IMAGE_INFO_TYPES = ["image", "weight", "seg", "bmask", "bkg"]
+
 
 class MEDSCreationError(Exception):
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)
+
 
 def validate_meds(filename):
     """
@@ -29,65 +29,65 @@ def validate_meds(filename):
     """
     from .meds import MEDS
 
-    m=MEDS(filename)
+    m = MEDS(filename)
 
-    fits=m._fits
+    fits = m._fits
 
     print("checking for required extensions")
-    required_ext=['object_data','image_info','image_cutouts']
+    required_ext = ["object_data", "image_info", "image_cutouts"]
 
-    nbad=0
+    nbad = 0
     for re in required_ext:
-        mess="    required extension named '%s' was not found" % re
+        mess = "    required extension named '%s' was not found" % re
         if re not in fits:
             print(mess)
             nbad += 1
     if nbad != 0:
-        print("    %d/%d were missing" % (nbad,len(required_ext)))
+        print("    %d/%d were missing" % (nbad, len(required_ext)))
     else:
         print("    OK")
 
     # require all fields
     print()
     print("checking for required object_data columns")
-    dt = numpy.dtype( get_meds_output_dtype(10) )
+    dt = numpy.dtype(get_meds_output_dtype(10))
     names = dt.names
-    onames = [c.lower() for c in fits['object_data'].get_colnames()]
+    onames = [c.lower() for c in fits["object_data"].get_colnames()]
 
-    nbad=0
+    nbad = 0
     for n in names:
-        mess="    required object_data field named '%s' was not found" % n
+        mess = "    required object_data field named '%s' was not found" % n
         if n.lower() not in onames:
             print(mess)
             nbad += 1
 
     if nbad != 0:
-        print("    %d/%d were missing" % (nbad,len(names)))
+        print("    %d/%d were missing" % (nbad, len(names)))
     else:
         print("    OK")
 
     # require only a subset
     print()
     print("checking for required image_info columns")
-    names=[
-        'image_path',
-        'image_ext',
-        'image_id',
-        'image_flags',
-        'magzp',
-        'scale',
+    names = [
+        "image_path",
+        "image_ext",
+        "image_id",
+        "image_flags",
+        "magzp",
+        "scale",
     ]
-    inames = [c.lower() for c in fits['image_info'].get_colnames()]
+    inames = [c.lower() for c in fits["image_info"].get_colnames()]
 
-    nbad=0
+    nbad = 0
     for n in names:
-        mess="    required image_info field named '%s' was not found" % n
+        mess = "    required image_info field named '%s' was not found" % n
         if n not in inames:
             print(mess)
             nbad += 1
 
     if nbad != 0:
-        print("    %d/%d were missing" % (nbad,len(names)))
+        print("    %d/%d were missing" % (nbad, len(names)))
     else:
         print("    OK")
 
@@ -106,16 +106,17 @@ def get_meds_output_struct(nobj, ncutout_max, extra_fields=None):
     extra_fields: numpy descriptor
         A numpy type descriptor to add to the default set
     """
-    dtype=get_meds_output_dtype(ncutout_max, extra_fields=extra_fields)
+    dtype = get_meds_output_dtype(ncutout_max, extra_fields=extra_fields)
     data = numpy.zeros(nobj, dtype=dtype)
 
-    noset=['ncutout']
+    noset = ["ncutout"]
     for d in dtype:
-        name=d[0]
+        name = d[0]
         if name not in noset:
             data[name] = DEFVAL
 
     return data
+
 
 def get_meds_input_struct(nobj, extra_fields=None):
     """
@@ -127,14 +128,14 @@ def get_meds_input_struct(nobj, extra_fields=None):
     nobj: int
         number of objects (length of array0
     extra_fields: numpy descriptor, optional
-        optional extra fields to add 
+        optional extra fields to add
     """
-    dtype=get_meds_input_dtype(extra_fields=extra_fields)
+    dtype = get_meds_input_dtype(extra_fields=extra_fields)
     data = numpy.zeros(nobj, dtype=dtype)
 
-    noset=['ncutout']
+    noset = ["ncutout"]
     for d in dtype:
-        name=d[0]
+        name = d[0]
         if name not in noset:
             data[name] = DEFVAL
 
@@ -151,17 +152,16 @@ def get_meds_input_dtype(extra_fields=None):
         A numpy type descriptor to add to the default set
     """
     dtype = [
-        ('id', 'i8'),
-        ('box_size', 'i8'),
-        ('ra','f8'),
-        ('dec','f8'),
+        ("id", "i8"),
+        ("box_size", "i8"),
+        ("ra", "f8"),
+        ("dec", "f8"),
     ]
 
     if extra_fields is not None:
         dtype += extra_fields
 
     return dtype
-
 
 
 def get_meds_output_dtype(ncutout_max, extra_fields=None):
@@ -177,23 +177,23 @@ def get_meds_output_dtype(ncutout_max, extra_fields=None):
     """
 
     dtype = [
-        ('id', 'i8'),
-        ('box_size', 'i8'),
-        ('ra','f8'),
-        ('dec','f8'),
-        ('ncutout', 'i8'),
-        ('file_id', 'i8', (ncutout_max,)),
-        ('start_row', 'i8', (ncutout_max,)),
-        ('orig_row', 'f8', (ncutout_max,)),
-        ('orig_col', 'f8', (ncutout_max,)),
-        ('orig_start_row', 'i8', (ncutout_max,)),
-        ('orig_start_col', 'i8', (ncutout_max,)),
-        ('cutout_row', 'f8', (ncutout_max,)),
-        ('cutout_col', 'f8', (ncutout_max,)),
-        ('dudrow', 'f8', (ncutout_max,)),
-        ('dudcol', 'f8', (ncutout_max,)),
-        ('dvdrow', 'f8', (ncutout_max,)),
-        ('dvdcol', 'f8', (ncutout_max,)),
+        ("id", "i8"),
+        ("box_size", "i8"),
+        ("ra", "f8"),
+        ("dec", "f8"),
+        ("ncutout", "i8"),
+        ("file_id", "i8", (ncutout_max,)),
+        ("start_row", "i8", (ncutout_max,)),
+        ("orig_row", "f8", (ncutout_max,)),
+        ("orig_col", "f8", (ncutout_max,)),
+        ("orig_start_row", "i8", (ncutout_max,)),
+        ("orig_start_col", "i8", (ncutout_max,)),
+        ("cutout_row", "f8", (ncutout_max,)),
+        ("cutout_col", "f8", (ncutout_max,)),
+        ("dudrow", "f8", (ncutout_max,)),
+        ("dudcol", "f8", (ncutout_max,)),
+        ("dvdrow", "f8", (ncutout_max,)),
+        ("dvdcol", "f8", (ncutout_max,)),
     ]
 
     if extra_fields is not None:
@@ -202,11 +202,10 @@ def get_meds_output_dtype(ncutout_max, extra_fields=None):
     return dtype
 
 
-def get_image_info_struct(nimage, path_len,
-                          image_id_len=None,
-                          wcs_len=None,
-                          ext_len=None,
-                          extra_dtype=None):
+def get_image_info_struct(
+    nimage, path_len, image_id_len=None,
+    wcs_len=None, ext_len=None, extra_dtype=None
+):
     """
     get the image info structure
 
@@ -236,15 +235,14 @@ def get_image_info_struct(nimage, path_len,
 
     data = numpy.zeros(nimage, dtype=dt)
 
-    data['scale'] = 1.0
+    data["scale"] = 1.0
 
     return data
 
-def get_image_info_dtype(path_len,
-                         image_id_len=None,
-                         wcs_len=None,
-                         ext_len=None,
-                         extra_dtype=None):
+
+def get_image_info_dtype(
+    path_len, image_id_len=None, wcs_len=None, ext_len=None, extra_dtype=None
+):
     """
     get the image_info dtype for the specified path string
     length and wcs string length
@@ -261,45 +259,44 @@ def get_image_info_dtype(path_len,
         instead of an integer, and this is the length
     """
 
-    path_fmt = 'S%d' % path_len
+    path_fmt = "S%d" % path_len
 
     if image_id_len is None:
-        image_id_descr = 'i8'
+        image_id_descr = "i8"
     else:
-        image_id_descr = 'S%d' % image_id_len
+        image_id_descr = "S%d" % image_id_len
 
     if ext_len is not None:
-        ext_descr = 'S%d' % ext_len
+        ext_descr = "S%d" % ext_len
     else:
-        ext_descr = 'i2'
-    dt=[]
+        ext_descr = "i2"
+    dt = []
     for ctype in IMAGE_INFO_TYPES:
-        path_name = '%s_path' % ctype
-        ext_name  = '%s_ext' % ctype
+        path_name = "%s_path" % ctype
+        ext_name = "%s_ext" % ctype
 
         dt += [
             (path_name, path_fmt),
-            (ext_name,ext_descr),
+            (ext_name, ext_descr),
         ]
 
     dt += [
-        ('image_id', image_id_descr),
-        ('image_flags', 'i8'),
-        ('magzp', 'f4'),
-        ('scale', 'f4'),
-        ('position_offset','f8'),
+        ("image_id", image_id_descr),
+        ("image_flags", "i8"),
+        ("magzp", "f4"),
+        ("scale", "f4"),
+        ("position_offset", "f8"),
     ]
     if wcs_len is not None:
-        wcs_fmt = 'S%d' % wcs_len
+        wcs_fmt = "S%d" % wcs_len
         dt += [
-            ('wcs',wcs_fmt),
+            ("wcs", wcs_fmt),
         ]
 
     if extra_dtype is not None:
         dt += extra_dtype
 
     return dt
-
 
 
 def make_wcs_positions(row, col, offset, inverse=False):
@@ -321,28 +318,25 @@ def make_wcs_positions(row, col, offset, inverse=False):
     inverse: bool, optional
         Set to True if the input are zero based
     """
-    n=row.size
-    dt=[('wcs_row','f8'),
-        ('wcs_col','f8'),
-        ('zrow','f8'),
-        ('zcol','f8')]
+    dt = [("wcs_row", "f8"), ("wcs_col", "f8"), ("zrow", "f8"), ("zcol", "f8")]
 
-    data=numpy.zeros(row.size, dtype=dt)
+    data = numpy.zeros(row.size, dtype=dt)
 
     if inverse:
-        data['zrow'] = row
-        data['zcol'] = col
+        data["zrow"] = row
+        data["zcol"] = col
 
-        data['wcs_row'] = row + offset
-        data['wcs_col'] = col + offset
+        data["wcs_row"] = row + offset
+        data["wcs_col"] = col + offset
     else:
-        data['wcs_row'] = row
-        data['wcs_col'] = col
+        data["wcs_row"] = row
+        data["wcs_col"] = col
 
-        data['zrow'] = row - offset
-        data['zcol'] = col - offset
+        data["zrow"] = row - offset
+        data["zcol"] = col - offset
 
     return data
+
 
 # coordinates
 # ra = -u
@@ -354,30 +348,35 @@ def make_wcs_positions(row, col, offset, inverse=False):
 # u = -ra on sphere = +phi on sphere
 # v = dec on sphere = -theta on sphere
 
-def radec_to_uv(ra,dec,ra_cen,dec_cen):
-    rhat_cen,uhat_cen,vhat_cen = radec_to_unitvecs_ruv(ra_cen,dec_cen)
-    rhat,uhat,vhat = radec_to_unitvecs_ruv(ra,dec)
-    cosang = numpy.dot(rhat,rhat_cen)
-    u = numpy.dot(rhat,uhat_cen)/cosang/numpy.pi*180.0*60.0*60.0 # arcsec
-    v = numpy.dot(rhat,vhat_cen)/cosang/numpy.pi*180.0*60.0*60.0 # arcsec
-    return u,v
 
-def radec_to_unitvecs_ruv(ra,dec):
-    theta,phi = radec_to_thetaphi(ra,dec)
-    return thetaphi_to_unitvecs_ruv(theta,phi)
+def radec_to_uv(ra, dec, ra_cen, dec_cen):
+    rhat_cen, uhat_cen, vhat_cen = radec_to_unitvecs_ruv(ra_cen, dec_cen)
+    rhat, uhat, vhat = radec_to_unitvecs_ruv(ra, dec)
+    cosang = numpy.dot(rhat, rhat_cen)
 
-def radec_to_thetaphi(ra,dec):
-    return (90.0-dec)/180.0*numpy.pi,-1.0*ra/180.0*numpy.pi
+    fac = 1 / numpy.pi * 180.0 * 60.0 * 60.0
+    u = numpy.dot(rhat, uhat_cen) / cosang * fac  # arcsec
+    v = numpy.dot(rhat, vhat_cen) / cosang * fac  # arcsec
+    return u, v
 
-def thetaphi_to_unitvecs_ruv(theta,phi):
+
+def radec_to_unitvecs_ruv(ra, dec):
+    theta, phi = radec_to_thetaphi(ra, dec)
+    return thetaphi_to_unitvecs_ruv(theta, phi)
+
+
+def radec_to_thetaphi(ra, dec):
+    return (90.0 - dec) / 180.0 * numpy.pi, -1.0 * ra / 180.0 * numpy.pi
+
+
+def thetaphi_to_unitvecs_ruv(theta, phi):
     sint = numpy.sin(theta)
     cost = numpy.cos(theta)
     sinp = numpy.sin(phi)
     cosp = numpy.cos(phi)
 
-    rhat = numpy.array([sint*cosp,sint*sinp,cost]).T
-    that = numpy.array([cost*cosp,cost*sinp,-1.0*sint]).T
-    phat = numpy.array([-1.0*sinp,cosp,numpy.zeros_like(sinp)]).T
+    rhat = numpy.array([sint * cosp, sint * sinp, cost]).T
+    that = numpy.array([cost * cosp, cost * sinp, -1.0 * sint]).T
+    phat = numpy.array([-1.0 * sinp, cosp, numpy.zeros_like(sinp)]).T
 
-    return rhat,phat,-1.0*that
-
+    return rhat, phat, -1.0 * that

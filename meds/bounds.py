@@ -5,10 +5,10 @@ class Bounds(object):
     Based on Bounds from deswl_shapelets
     """
     def __init__(self, rowmin, rowmax, colmin, colmax):
-        self.rowmin=rowmin
-        self.rowmax=rowmax
-        self.colmin=colmin
-        self.colmax=colmax
+        self.rowmin = rowmin
+        self.rowmax = rowmax
+        self.colmin = colmin
+        self.colmax = colmax
 
     def contains_point(self, row, col):
         """
@@ -33,11 +33,10 @@ class Bounds(object):
         rows,cols: arrays
             The positions to check
         """
-        return (  (rows <= self.rowmax)
-                & (rows >= self.rowmin)
-                & (cols <= self.colmax)
-                & (cols >= self.colmin) )
-
+        return ((rows <= self.rowmax) &
+                (rows >= self.rowmin) &
+                (cols <= self.colmax) &
+                (cols >= self.colmin))
 
     def contains_bounds(self, bounds):
         """
@@ -48,7 +47,7 @@ class Bounds(object):
         bounds: Bounds
             The bounding box to check
         """
-        assert isinstance(bounds,Bounds)
+        assert isinstance(bounds, Bounds)
         return (bounds.rowmin >= self.rowmin
                 and bounds.rowmax <= self.rowmax
                 and bounds.colmin >= self.colmin
@@ -63,12 +62,12 @@ class Bounds(object):
         bounds: Bounds
             The bounding box to check
         """
-        assert isinstance(bounds,Bounds)
+        assert isinstance(bounds, Bounds)
 
-        return ( not (bounds.rowmin >= self.rowmax)
+        return (not (bounds.rowmin >= self.rowmax)
                 and not (bounds.rowmax <= self.rowmin)
                 and not (bounds.colmin >= self.colmax)
-                and not (bounds.colmax <= self.colmin) )
+                and not (bounds.colmax <= self.colmin))
 
     def expand_point(self, row, col):
         """
@@ -114,8 +113,6 @@ class Bounds(object):
         if colmax > self.colmax:
             self.colmax = colmax
 
-
-
     def expand_bounds(self, bounds):
         """
         expand the bounds to include the input Bounds
@@ -125,7 +122,7 @@ class Bounds(object):
         bounds: Bounds
             The bounding box to check
         """
-        assert isinstance(bounds,Bounds)
+        assert isinstance(bounds, Bounds)
 
         if bounds.rowmin < self.rowmin:
             self.rowmin = bounds.rowmin
@@ -138,8 +135,6 @@ class Bounds(object):
             self.colmax = bounds.colmax
 
     def __repr__(self):
-        mess="Bounds(rowmin=%g, rowmax=%g, colmin=%g, colmax=%g)"
+        mess = "Bounds(rowmin=%g, rowmax=%g, colmin=%g, colmax=%g)"
         mess = mess % (self.rowmin, self.rowmax, self.colmin, self.colmax)
         return mess
-
-
