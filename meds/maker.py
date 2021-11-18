@@ -312,12 +312,18 @@ class MEDSMaker(dict):
                 file_ids = []
                 rows = []
                 cols = []
+                colors = []
                 for iobj in range(start, end):
                     ncut = obj_data["ncutout"][iobj]
+                    if "psf_color" in obj_data.dtype.names:
+                        color = obj_data["psf_color"][iobj]
+                    else:
+                        color = None
                     for icut in range(ncut):
                         file_ids.append(obj_data["file_id"][iobj, icut])
                         rows.append(obj_data["orig_row"][iobj, icut])
                         cols.append(obj_data["orig_col"][iobj, icut])
+                        colors.append(color)
 
                 jobs.append(
                     joblib.delayed(_psf_rec_func)(
@@ -326,6 +332,7 @@ class MEDSMaker(dict):
                         file_ids,
                         rows,
                         cols,
+                        colors,
                     )
                 )
 
@@ -383,6 +390,11 @@ class MEDSMaker(dict):
         for iobj in range(nobj):
             ncut = obj_data["ncutout"][iobj]
 
+            if "psf_color" in obj_data.dtype.names:
+                color = obj_data["psf_color"][iobj]
+            else:
+                color = None
+
             for icut in range(ncut):
                 # the expected shape
                 eshape = (
@@ -396,7 +408,10 @@ class MEDSMaker(dict):
                 col = obj_data["orig_col"][iobj, icut]
                 start_row = obj_data["psf_start_row"][iobj, icut]
 
-                psfim = psf_data[file_id].get_rec(row, col)
+                try:
+                    psfim = psf_data[file_id].get_rec(row, col, color=color)
+                except TypeError:
+                    psfim = psf_data[file_id].get_rec(row, col)
 
                 if psfim.shape != eshape:
                     raise ValueError(
@@ -682,6 +697,8 @@ class MEDSMaker(dict):
             y = pos["wcs_row"][q_rc]
             if "color" in self.obj_data.dtype.names:
                 color = self.obj_data["color"][q]
+            elif "wcs_color" in self.obj_data.dtype.names:
+                color = self.obj_data["wcs_color"][q]
             else:
                 color = None
 
@@ -736,6 +753,8 @@ class MEDSMaker(dict):
 
         if "color" in obj_data.dtype.names:
             color = obj_data["color"][q]
+        elif "wcs_color" in obj_data.dtype.names:
+            color = obj_data["wcs_color"][q]
         else:
             color = None
 
@@ -1179,6 +1198,11 @@ class MEDSMaker(dict):
 
         psf_start_row = 0
         for iobj in range(obj_data.size):
+            if "psf_color" in obj_data.dtype.names:
+                color = obj_data["psf_color"][iobj]
+            else:
+                color = None
+
             for icut in range(obj_data["ncutout"][iobj]):
 
                 row = obj_data["orig_row"][iobj, icut]
@@ -1190,7 +1214,10 @@ class MEDSMaker(dict):
                 if hasattr(p, "get_rec_shape"):
                     psf_shape = p.get_rec_shape(row, col)
                 else:
-                    psf_shape = p.get_rec(row, col).shape
+                    try:
+                        psf_shape = p.get_rec(row, col, color=color).shape
+                    except TypeError:
+                        psf_shape = p.get_rec(row, col).shape
 
                 psf_npix = int(psf_shape[0] * psf_shape[1])
 
@@ -1373,16 +1400,19 @@ class MEDSMaker(dict):
             self._joblib_threads = None
 
 
-def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
+def _psf_rec_func(output_path, psf_data, file_ids, rows, cols, colors):
     import joblib
 
-    joblib.dump(
-        [
-            psf_data[file_id].get_rec(row, col)
-            for file_id, row, col in zip(file_ids, rows, cols)
-        ],
-        output_path,
-    )
+    psfs = []
+    for file_id, row, col, color in zip(file_ids, rows, cols, colors):
+        try:
+            psf = psf_data[file_id].get_rec(row, col, color=color)
+        except TypeError:
+            psf = psf_data[file_id].get_rec(row, col)
+        psfs.append(psf)
+
+    joblib.dump(psfs, output_path)
+
     return output_path
 
 
