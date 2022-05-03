@@ -24,7 +24,7 @@ ext = Extension("meds._uberseg", sources, include_dirs=include_dirs)
 
 setup(
     name="meds",
-    version="0.9.14",
+    version="0.9.15",
     description="Python and C libraries for reading MEDS files",
     license="GNU GPLv3",
     author="Erin Scott Sheldon",
