@@ -258,7 +258,7 @@ class MEDSMaker(dict):
         orow_box, row_box = self._get_clipped_boxes(dims[0], orow, bsize)
         ocol_box, col_box = self._get_clipped_boxes(dims[1], ocol, bsize)
 
-        subim = zeros((bsize, bsize), dtype=im_data.dtype)
+        subim = zeros((bsize, bsize), dtype=self["%s_dtype" % cutout_type])
         subim += default_values[cutout_type]
 
         ok = (
