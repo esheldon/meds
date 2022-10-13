@@ -255,7 +255,8 @@ class MEDS(object):
         return mosaic
 
     def get_cutout_list(self, iobj, type='image'):
-        """Get an image list with all cutouts associated with this coadd object.
+        """Get an image list with all cutouts associated
+        with this coadd object.
 
         Note each individual cutout is actually a view into a larger
         mosaic of all images.
