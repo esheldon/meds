@@ -408,9 +408,9 @@ class MEDSMaker(dict):
                 col = obj_data["orig_col"][iobj, icut]
                 start_row = obj_data["psf_start_row"][iobj, icut]
 
-                try:
+                if color is not None:
                     psfim = psf_data[file_id].get_rec(row, col, color=color)
-                except TypeError:
+                else:
                     psfim = psf_data[file_id].get_rec(row, col)
 
                 if psfim.shape != eshape:
@@ -726,11 +726,7 @@ class MEDSMaker(dict):
 
     def _get_jacobians(self, x, y, wcs, color=None):
         if color is not None:
-            # not all wcs support color
-            try:
-                jacob = wcs.get_jacobian(x=x, y=y, color=color)
-            except TypeError:
-                jacob = wcs.get_jacobian(x=x, y=y)
+            jacob = wcs.get_jacobian(x=x, y=y, color=color)
         else:
             jacob = wcs.get_jacobian(x=x, y=y)
 
@@ -1214,9 +1210,9 @@ class MEDSMaker(dict):
                 if hasattr(p, "get_rec_shape"):
                     psf_shape = p.get_rec_shape(row, col)
                 else:
-                    try:
+                    if color is not None:
                         psf_shape = p.get_rec(row, col, color=color).shape
-                    except TypeError:
+                    else:
                         psf_shape = p.get_rec(row, col).shape
 
                 psf_npix = int(psf_shape[0] * psf_shape[1])
@@ -1405,9 +1401,9 @@ def _psf_rec_func(output_path, psf_data, file_ids, rows, cols, colors):
 
     psfs = []
     for file_id, row, col, color in zip(file_ids, rows, cols, colors):
-        try:
+        if color is not None:
             psf = psf_data[file_id].get_rec(row, col, color=color)
-        except TypeError:
+        else:
             psf = psf_data[file_id].get_rec(row, col)
         psfs.append(psf)
 
@@ -1417,12 +1413,9 @@ def _psf_rec_func(output_path, psf_data, file_ids, rows, cols, colors):
 
 
 def _sky2image_func(wcs, ra, dec, color=None):
-
     if color is not None:
-        try:
-            res = wcs.sky2image(ra, dec, color=color)
-        except TypeError:
-            res = wcs.sky2image(ra, dec)
+        res = wcs.sky2image(ra, dec, color=color)
     else:
         res = wcs.sky2image(ra, dec)
+
     return res
