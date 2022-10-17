@@ -279,6 +279,12 @@ class MEDSMaker(dict):
 
         cutout_hdu.write(subim, start=start_row)
 
+    def _psf_uses_color(self, file_id):
+        if file_id == 0 and self["first_image_is_coadd"]:
+            return self.get("psf", {}).get("coadd", {}).get("use_color", False)
+        else:
+            return self.get("psf", {}).get("se", {}).get("use_color", False)
+
     def _write_psf_cutouts_joblib(self):
         print("    using joblib")
 
@@ -313,6 +319,7 @@ class MEDSMaker(dict):
                 rows = []
                 cols = []
                 colors = []
+                use_color = []
                 for iobj in range(start, end):
                     ncut = obj_data["ncutout"][iobj]
                     if "psf_color" in obj_data.dtype.names:
@@ -324,6 +331,10 @@ class MEDSMaker(dict):
                         rows.append(obj_data["orig_row"][iobj, icut])
                         cols.append(obj_data["orig_col"][iobj, icut])
                         colors.append(color)
+                        if self._psf_uses_color(file_ids[-1]):
+                            use_color.append(True)
+                        else:
+                            use_color.append(False)
 
                 jobs.append(
                     joblib.delayed(_psf_rec_func)(
@@ -333,6 +344,7 @@ class MEDSMaker(dict):
                         rows,
                         cols,
                         colors,
+                        use_color,
                     )
                 )
 
@@ -408,9 +420,9 @@ class MEDSMaker(dict):
                 col = obj_data["orig_col"][iobj, icut]
                 start_row = obj_data["psf_start_row"][iobj, icut]
 
-                try:
+                if self._psf_uses_color(file_id):
                     psfim = psf_data[file_id].get_rec(row, col, color=color)
-                except TypeError:
+                else:
                     psfim = psf_data[file_id].get_rec(row, col)
 
                 if psfim.shape != eshape:
@@ -599,6 +611,12 @@ class MEDSMaker(dict):
         else:
             return 1.0
 
+    def _wcs_uses_color(self, file_id):
+        if file_id == 0 and self["first_image_is_coadd"]:
+            return self.get("coadd_astrom", {}).get("use_color", False)
+        else:
+            return self.get("se_astrom", {}).get("use_color", False)
+
     def _build_meds_layout(self):
         """
         build the object data, filling in the stub we read
@@ -702,7 +720,10 @@ class MEDSMaker(dict):
             else:
                 color = None
 
-            jacob = self._get_jacobians(x, y, wcs, color=color)
+            jacob = self._get_jacobians(
+                x, y, wcs, color=color,
+                use_color=self._wcs_uses_color(file_id),
+            )
 
             # jacob is a tuple of arrays
             self.obj_data["dudcol"][q, icut] = jacob[0]
@@ -724,13 +745,9 @@ class MEDSMaker(dict):
 
         print("meds layout build time: %f seconds" % (time.time() - t0))
 
-    def _get_jacobians(self, x, y, wcs, color=None):
-        if color is not None:
-            # not all wcs support color
-            try:
-                jacob = wcs.get_jacobian(x=x, y=y, color=color)
-            except TypeError:
-                jacob = wcs.get_jacobian(x=x, y=y)
+    def _get_jacobians(self, x, y, wcs, color=None, use_color=False):
+        if use_color:
+            jacob = wcs.get_jacobian(x=x, y=y, color=color)
         else:
             jacob = wcs.get_jacobian(x=x, y=y)
 
@@ -764,6 +781,7 @@ class MEDSMaker(dict):
             obj_data["ra"][q],
             obj_data["dec"][q],
             color=color,
+            use_color=self._wcs_uses_color(file_id),
         )
 
         # now test if in the actual image space.  Bounds are created
@@ -771,7 +789,7 @@ class MEDSMaker(dict):
         bnds = self._get_image_bounds(wcs)
 
         # for coadds add buffer if requested
-        if file_id == 0:
+        if file_id == 0 and self["first_image_is_coadd"]:
             bnds.rowmin -= self["coadd_bounds_buffer_rowcol"]
             bnds.rowmax += self["coadd_bounds_buffer_rowcol"]
             bnds.colmin -= self["coadd_bounds_buffer_rowcol"]
@@ -923,7 +941,7 @@ class MEDSMaker(dict):
 
         return new_data
 
-    def _do_sky2image(self, wcs, ra, dec, color=None):
+    def _do_sky2image(self, wcs, ra, dec, color=None, use_color=False):
         """
         get image positions for the input radec. returns a structure
         with both wcs positions and zero offset positions
@@ -953,13 +971,14 @@ class MEDSMaker(dict):
                     jobs.append(
                         joblib.delayed(_sky2image_func)(
                             wcs, ra[start:end], dec[start:end],
-                            color=color[start:end]
+                            color=color[start:end], use_color=use_color,
                         )
                     )
                 else:
                     jobs.append(
                         joblib.delayed(_sky2image_func)(
-                            wcs, ra[start:end], dec[start:end]
+                            wcs, ra[start:end], dec[start:end],
+                            use_color=use_color, color=color,
                         )
                     )
 
@@ -985,7 +1004,9 @@ class MEDSMaker(dict):
             assert col.shape == ra.shape
             assert row.shape == ra.shape
         else:
-            col, row = _sky2image_func(wcs, ra, dec, color=color)
+            col, row = _sky2image_func(
+                wcs, ra, dec, color=color, use_color=use_color,
+            )
 
         positions = make_wcs_positions(row, col, wcs.position_offset)
         return positions
@@ -1212,11 +1233,14 @@ class MEDSMaker(dict):
                 p = psf_data[file_id]
 
                 if hasattr(p, "get_rec_shape"):
-                    psf_shape = p.get_rec_shape(row, col)
+                    if self._psf_uses_color(file_id):
+                        psf_shape = p.get_rec_shape(row, col, color=color)
+                    else:
+                        psf_shape = p.get_rec_shape(row, col)
                 else:
-                    try:
+                    if self._psf_uses_color(file_id):
                         psf_shape = p.get_rec(row, col, color=color).shape
-                    except TypeError:
+                    else:
                         psf_shape = p.get_rec(row, col).shape
 
                 psf_npix = int(psf_shape[0] * psf_shape[1])
@@ -1400,14 +1424,18 @@ class MEDSMaker(dict):
             self._joblib_threads = None
 
 
-def _psf_rec_func(output_path, psf_data, file_ids, rows, cols, colors):
+def _psf_rec_func(
+    output_path, psf_data, file_ids, rows, cols, colors, use_colors
+):
     import joblib
 
     psfs = []
-    for file_id, row, col, color in zip(file_ids, rows, cols, colors):
-        try:
+    for file_id, row, col, color, use_color in zip(
+        file_ids, rows, cols, colors, use_colors
+    ):
+        if use_color:
             psf = psf_data[file_id].get_rec(row, col, color=color)
-        except TypeError:
+        else:
             psf = psf_data[file_id].get_rec(row, col)
         psfs.append(psf)
 
@@ -1416,13 +1444,10 @@ def _psf_rec_func(output_path, psf_data, file_ids, rows, cols, colors):
     return output_path
 
 
-def _sky2image_func(wcs, ra, dec, color=None):
+def _sky2image_func(wcs, ra, dec, color=None, use_color=False):
 
-    if color is not None:
-        try:
-            res = wcs.sky2image(ra, dec, color=color)
-        except TypeError:
-            res = wcs.sky2image(ra, dec)
+    if use_color:
+        res = wcs.sky2image(ra, dec, color=color)
     else:
         res = wcs.sky2image(ra, dec)
     return res
