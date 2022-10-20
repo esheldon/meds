@@ -104,7 +104,10 @@ class MEDSMaker(dict):
 
         """
 
-        print("opening output MEDS file: '%s'" % filename)
+        print(
+            "opening output MEDS file: '%s'" % filename,
+            flush=True,
+        )
         with fitsio.FITS(filename, "rw", clobber=True) as fits:
             self.fits = fits
 
@@ -123,14 +126,17 @@ class MEDSMaker(dict):
             if self.psf_info is not None:
                 self._write_psf_info()
 
-        print("output is in:", filename)
+        print(
+            "output is in:", filename,
+            flush=True,
+        )
 
     def _write_object_data(self):
         """
         write the object data
         """
 
-        print("writing object_data")
+        print("writing object_data", flush=True)
         self.fits.write(self.obj_data, extname=self["object_data_extname"])
 
     def _write_image_info(self):
@@ -138,7 +144,7 @@ class MEDSMaker(dict):
         write the object data
         """
 
-        print("writing image_info")
+        print("writing image_info", flush=True)
         self.fits.write(self.image_info, extname=self["image_info_extname"])
 
     def _write_metadata(self):
@@ -146,7 +152,7 @@ class MEDSMaker(dict):
         write the object data
         """
 
-        print("writing metadata")
+        print("writing metadata", flush=True)
         if self.meta_data is not None:
             self.fits.write(self.meta_data, extname=self["metadata_extname"])
 
@@ -165,7 +171,7 @@ class MEDSMaker(dict):
             header = None
 
         for type in self["cutout_types"]:
-            print("    reserving %s mosaic" % type)
+            print("    reserving %s mosaic" % type, flush=True)
             extname = self["%s_cutout_extname" % type]
             dtype = self["%s_dtype" % type]
 
@@ -183,7 +189,7 @@ class MEDSMaker(dict):
             fits[extname].write_keys(header, clean=False)
 
         if self.psf_data is not None:
-            print("    reserving psf mosaic")
+            print("    reserving psf mosaic", flush=True)
             extname = "psf"
             dtype = "f4"
             psf_dims = [self.total_psf_pixels]
@@ -206,7 +212,7 @@ class MEDSMaker(dict):
         write the cutouts for the specified type
         """
 
-        print("writing %s cutouts" % cutout_type)
+        print("writing %s cutouts" % cutout_type, flush=True)
 
         obj_data = self.obj_data
 
@@ -221,12 +227,15 @@ class MEDSMaker(dict):
             impath = self.image_info[pkey][file_id].strip()
 
             ttup = (file_id + 1, nfile, cutout_type, impath)
-            print("    %d/%d %s %s" % ttup)
+            print("    %d/%d %s %s" % ttup, flush=True)
 
             im_data = self._read_image(file_id, cutout_type)
 
             if im_data is None:
-                print("    no %s specified for file" % cutout_type)
+                print(
+                    "    no %s specified for file" % cutout_type,
+                    flush=True,
+                )
                 continue
 
             for iobj in range(nobj):
@@ -275,12 +284,21 @@ class MEDSMaker(dict):
 
             subim[row_box[0]: row_box[1], col_box[0]: col_box[1]] = read_im
         else:
-            print("    not reading off-image data:", orow_box, ocol_box)
+            print(
+                "    not reading off-image data:", orow_box, ocol_box,
+                flush=True,
+            )
 
         cutout_hdu.write(subim, start=start_row)
 
+    def _psf_uses_color(self, file_id):
+        if file_id == 0 and self["first_image_is_coadd"]:
+            return self.get("psf", {}).get("coadd", {}).get("use_color", False)
+        else:
+            return self.get("psf", {}).get("se", {}).get("use_color", False)
+
     def _write_psf_cutouts_joblib(self):
-        print("    using joblib")
+        print("    using joblib", flush=True)
 
         obj_data = self.obj_data
         psf_data = self.psf_data
@@ -300,7 +318,7 @@ class MEDSMaker(dict):
 
         tempdir = tempfile.mkdtemp()
         try:
-            print("    staging data to %s" % tempdir)
+            print("    staging data to %s" % tempdir, flush=True)
             # build the jobs
             # each process works on a chunk of 2000 objects
             jobs = []
@@ -312,12 +330,23 @@ class MEDSMaker(dict):
                 file_ids = []
                 rows = []
                 cols = []
+                colors = []
+                use_color = []
                 for iobj in range(start, end):
                     ncut = obj_data["ncutout"][iobj]
+                    if "psf_color" in obj_data.dtype.names:
+                        color = obj_data["psf_color"][iobj]
+                    else:
+                        color = None
                     for icut in range(ncut):
                         file_ids.append(obj_data["file_id"][iobj, icut])
                         rows.append(obj_data["orig_row"][iobj, icut])
                         cols.append(obj_data["orig_col"][iobj, icut])
+                        colors.append(color)
+                        if self._psf_uses_color(file_ids[-1]):
+                            use_color.append(True)
+                        else:
+                            use_color.append(False)
 
                 jobs.append(
                     joblib.delayed(_psf_rec_func)(
@@ -326,6 +355,8 @@ class MEDSMaker(dict):
                         file_ids,
                         rows,
                         cols,
+                        colors,
+                        use_color,
                     )
                 )
 
@@ -383,6 +414,11 @@ class MEDSMaker(dict):
         for iobj in range(nobj):
             ncut = obj_data["ncutout"][iobj]
 
+            if "psf_color" in obj_data.dtype.names:
+                color = obj_data["psf_color"][iobj]
+            else:
+                color = None
+
             for icut in range(ncut):
                 # the expected shape
                 eshape = (
@@ -396,7 +432,10 @@ class MEDSMaker(dict):
                 col = obj_data["orig_col"][iobj, icut]
                 start_row = obj_data["psf_start_row"][iobj, icut]
 
-                psfim = psf_data[file_id].get_rec(row, col)
+                if self._psf_uses_color(file_id):
+                    psfim = psf_data[file_id].get_rec(row, col, color=color)
+                else:
+                    psfim = psf_data[file_id].get_rec(row, col)
 
                 if psfim.shape != eshape:
                     raise ValueError(
@@ -411,7 +450,7 @@ class MEDSMaker(dict):
         write the cutouts for the specified type
         """
 
-        print("writing psf cutouts")
+        print("writing psf cutouts", flush=True)
 
         if self._use_joblib:
             self._write_psf_cutouts_joblib()
@@ -423,7 +462,7 @@ class MEDSMaker(dict):
         write the psf info
         """
 
-        print("writing psf info")
+        print("writing psf info", flush=True)
 
         self.fits.write(self.psf_info, extname="psf_info")
 
@@ -509,7 +548,7 @@ class MEDSMaker(dict):
             if bkg is not None:
                 im -= bkg
             else:
-                print("    no background for image")
+                print("    no background for image", flush=True)
 
             """
             bmask = self._read_one_image(file_id, 'bmask')
@@ -535,7 +574,7 @@ class MEDSMaker(dict):
                     w = self._check_bad_bmask(bmask, self["unusable_bmask"])
                     im[w] = 0.0
                 else:
-                    print("    no bmask for image")
+                    print("    no bmask for image", flush=True)
 
             scale = self._get_scale(file_id)
             im *= 1.0 / scale ** 2
@@ -549,7 +588,10 @@ class MEDSMaker(dict):
 
         wbad = where((bmask & badflags) != 0)
         if wbad[0].size != 0:
-            print("        found %d unusable pixels" % wbad[0].size)
+            print(
+                "        found %d unusable pixels" % wbad[0].size,
+                flush=True,
+            )
         return wbad
 
     def _read_one_image(self, file_id, cutout_type):
@@ -584,6 +626,12 @@ class MEDSMaker(dict):
         else:
             return 1.0
 
+    def _wcs_uses_color(self, file_id):
+        if file_id == 0 and self["first_image_is_coadd"]:
+            return self.get("coadd_astrom", {}).get("use_color", False)
+        else:
+            return self.get("se_astrom", {}).get("use_color", False)
+
     def _build_meds_layout(self):
         """
         build the object data, filling in the stub we read
@@ -599,7 +647,7 @@ class MEDSMaker(dict):
 
         trim_to_coadd = self.get("trim_to_coadd", False)
         if self["first_image_is_coadd"] and trim_to_coadd:
-            print("    trimming to coadd")
+            print("    trimming to coadd", flush=True)
 
             tres = self._get_pos_and_bounds(self.obj_data, 0)
             coadd_wcs, coadd_pos, coadd_bnds, coadd_q = tres
@@ -626,7 +674,10 @@ class MEDSMaker(dict):
             # do the test
             in_bnds = bnds.contains_points(pos["zrow"], pos["zcol"])
             (q_rc,) = numpy.where(in_bnds)
-            print("    second cut: %6d of %6d objects" % (len(q_rc), len(q)))
+            print(
+                "    second cut: %6d of %6d objects" % (len(q_rc), len(q)),
+                flush=True,
+            )
 
             # force into the image if requested
             if (
@@ -682,10 +733,15 @@ class MEDSMaker(dict):
             y = pos["wcs_row"][q_rc]
             if "color" in self.obj_data.dtype.names:
                 color = self.obj_data["color"][q]
+            elif "wcs_color" in self.obj_data.dtype.names:
+                color = self.obj_data["wcs_color"][q]
             else:
                 color = None
 
-            jacob = self._get_jacobians(x, y, wcs, color=color)
+            jacob = self._get_jacobians(
+                x, y, wcs, color=color,
+                use_color=self._wcs_uses_color(file_id),
+            )
 
             # jacob is a tuple of arrays
             self.obj_data["dudcol"][q, icut] = jacob[0]
@@ -697,7 +753,10 @@ class MEDSMaker(dict):
             self.obj_data["ncutout"][q] += 1
 
         (w,) = numpy.where(self.obj_data["ncutout"] > 0)
-        print("%d/%d had ncut > 0" % (w.size, self.obj_data.size))
+        print(
+            "%d/%d had ncut > 0" % (w.size, self.obj_data.size),
+            flush=True,
+        )
 
         self.obj_data = self._make_resized_data(self.obj_data)
         self._set_start_rows_and_pixel_count()
@@ -705,15 +764,14 @@ class MEDSMaker(dict):
         if self.psf_data is not None:
             self._set_psf_layout()
 
-        print("meds layout build time: %f seconds" % (time.time() - t0))
+        print(
+            "meds layout build time: %f seconds" % (time.time() - t0),
+            flush=True,
+        )
 
-    def _get_jacobians(self, x, y, wcs, color=None):
-        if color is not None:
-            # not all wcs support color
-            try:
-                jacob = wcs.get_jacobian(x=x, y=y, color=color)
-            except TypeError:
-                jacob = wcs.get_jacobian(x=x, y=y)
+    def _get_jacobians(self, x, y, wcs, color=None, use_color=False):
+        if use_color:
+            jacob = wcs.get_jacobian(x=x, y=y, color=color)
         else:
             jacob = wcs.get_jacobian(x=x, y=y)
 
@@ -724,7 +782,10 @@ class MEDSMaker(dict):
         impath = self.image_info["image_path"][file_id].strip()
         position_offset = self.image_info["position_offset"][file_id]
 
-        print("file %4d of %4d: '%s'" % (file_id + 1, nim, impath))
+        print(
+            "file %4d of %4d: '%s'" % (file_id + 1, nim, impath),
+            flush=True,
+        )
 
         wcs = self._get_wcs(file_id)
 
@@ -732,10 +793,15 @@ class MEDSMaker(dict):
         wcs.position_offset = position_offset
 
         q = self._do_rough_sky_cut(wcs, obj_data["ra"], obj_data["dec"])
-        print("    first cut:  %6d of %6d objects" % (q.size, obj_data.size))
+        print(
+            "    first cut:  %6d of %6d objects" % (q.size, obj_data.size),
+            flush=True,
+        )
 
         if "color" in obj_data.dtype.names:
             color = obj_data["color"][q]
+        elif "wcs_color" in obj_data.dtype.names:
+            color = obj_data["wcs_color"][q]
         else:
             color = None
 
@@ -745,6 +811,7 @@ class MEDSMaker(dict):
             obj_data["ra"][q],
             obj_data["dec"][q],
             color=color,
+            use_color=self._wcs_uses_color(file_id),
         )
 
         # now test if in the actual image space.  Bounds are created
@@ -752,7 +819,7 @@ class MEDSMaker(dict):
         bnds = self._get_image_bounds(wcs)
 
         # for coadds add buffer if requested
-        if file_id == 0:
+        if file_id == 0 and self["first_image_is_coadd"]:
             bnds.rowmin -= self["coadd_bounds_buffer_rowcol"]
             bnds.rowmax += self["coadd_bounds_buffer_rowcol"]
             bnds.colmin -= self["coadd_bounds_buffer_rowcol"]
@@ -766,11 +833,13 @@ class MEDSMaker(dict):
         m = "    pre-forced obj row range (min, max - image row max):  % e % e"
         print(
             m % (min(pos["zrow"][q_rc]),
-                 max(pos["zrow"][q_rc] - bnds.rowmax))
+                 max(pos["zrow"][q_rc] - bnds.rowmax)),
+            flush=True,
         )
         m = "    pre-forced obj col range (min, max - image col max):  % e % e"
         print(
-            m % (min(pos["zcol"][q_rc]), max(pos["zcol"][q_rc] - bnds.colmax))
+            m % (min(pos["zcol"][q_rc]), max(pos["zcol"][q_rc] - bnds.colmax)),
+            flush=True,
         )
 
         rn = numpy.clip(pos["zrow"][q_rc], bnds.rowmin, bnds.rowmax)
@@ -786,13 +855,18 @@ class MEDSMaker(dict):
 
         m = "    post-forced obj row range (min, max - image row max): % e % e"
         print(
-            m % (min(pos["zrow"][q_rc]), max(pos["zrow"][q_rc] - bnds.rowmax))
+            m % (min(pos["zrow"][q_rc]), max(pos["zrow"][q_rc] - bnds.rowmax)),
+            flush=True,
         )
         m = "    post-forced obj col range (min, max - image col max): % e % e"
         print(
-            m % (min(pos["zcol"][q_rc]), max(pos["zcol"][q_rc] - bnds.colmax))
+            m % (min(pos["zcol"][q_rc]), max(pos["zcol"][q_rc] - bnds.colmax)),
+            flush=True,
         )
-        print("    # of objects forced into coadd: %d" % num_forced)
+        print(
+            "    # of objects forced into coadd: %d" % num_forced,
+            flush=True,
+        )
 
         # make sure stuff that is forced made it
         in_in_bnds = bnds.contains_points(pos["zrow"][q_rc], pos["zcol"][q_rc])
@@ -803,7 +877,10 @@ class MEDSMaker(dict):
         """
         set the total number of pixels in each mosaic
         """
-        print("setting start rows and pixel count")
+        print(
+            "setting start rows and pixel count",
+            flush=True,
+        )
         data = self.obj_data
         nobj = data.size
 
@@ -828,7 +905,10 @@ class MEDSMaker(dict):
                 "total_pixels %d != " "npix %d" % (self.total_pixels, npix)
             )
 
-        print("total pixels:", self.total_pixels)
+        print(
+            "total pixels:", self.total_pixels,
+            flush=True,
+        )
 
     def _get_wcs(self, file_id):
         """
@@ -904,7 +984,7 @@ class MEDSMaker(dict):
 
         return new_data
 
-    def _do_sky2image(self, wcs, ra, dec, color=None):
+    def _do_sky2image(self, wcs, ra, dec, color=None, use_color=False):
         """
         get image positions for the input radec. returns a structure
         with both wcs positions and zero offset positions
@@ -934,13 +1014,14 @@ class MEDSMaker(dict):
                     jobs.append(
                         joblib.delayed(_sky2image_func)(
                             wcs, ra[start:end], dec[start:end],
-                            color=color[start:end]
+                            color=color[start:end], use_color=use_color,
                         )
                     )
                 else:
                     jobs.append(
                         joblib.delayed(_sky2image_func)(
-                            wcs, ra[start:end], dec[start:end]
+                            wcs, ra[start:end], dec[start:end],
+                            use_color=use_color, color=color,
                         )
                     )
 
@@ -966,7 +1047,9 @@ class MEDSMaker(dict):
             assert col.shape == ra.shape
             assert row.shape == ra.shape
         else:
-            col, row = _sky2image_func(wcs, ra, dec, color=color)
+            col, row = _sky2image_func(
+                wcs, ra, dec, color=color, use_color=use_color,
+            )
 
         positions = make_wcs_positions(row, col, wcs.position_offset)
         return positions
@@ -1093,7 +1176,10 @@ class MEDSMaker(dict):
             raise ValueError("unsupported cutout types: '%s'" % st)
 
         self["cutout_types"] = cutout_types
-        print("writing cutouts for:", cutout_types)
+        print(
+            "writing cutouts for:", cutout_types,
+            flush=True,
+        )
 
     def _set_meta_data(self, meta_data_in):
         """
@@ -1170,7 +1256,10 @@ class MEDSMaker(dict):
         if self.psf_data is None:
             raise ValueError("_set_psf_layout called " "with no psf data set")
 
-        print("setting psf layout")
+        print(
+            "setting psf layout",
+            flush=True,
+        )
 
         obj_data = self.obj_data
         psf_data = self.psf_data
@@ -1179,6 +1268,11 @@ class MEDSMaker(dict):
 
         psf_start_row = 0
         for iobj in range(obj_data.size):
+            if "psf_color" in obj_data.dtype.names:
+                color = obj_data["psf_color"][iobj]
+            else:
+                color = None
+
             for icut in range(obj_data["ncutout"][iobj]):
 
                 row = obj_data["orig_row"][iobj, icut]
@@ -1188,9 +1282,15 @@ class MEDSMaker(dict):
                 p = psf_data[file_id]
 
                 if hasattr(p, "get_rec_shape"):
-                    psf_shape = p.get_rec_shape(row, col)
+                    if self._psf_uses_color(file_id):
+                        psf_shape = p.get_rec_shape(row, col, color=color)
+                    else:
+                        psf_shape = p.get_rec_shape(row, col)
                 else:
-                    psf_shape = p.get_rec(row, col).shape
+                    if self._psf_uses_color(file_id):
+                        psf_shape = p.get_rec(row, col, color=color).shape
+                    else:
+                        psf_shape = p.get_rec(row, col).shape
 
                 psf_npix = int(psf_shape[0] * psf_shape[1])
 
@@ -1373,26 +1473,30 @@ class MEDSMaker(dict):
             self._joblib_threads = None
 
 
-def _psf_rec_func(output_path, psf_data, file_ids, rows, cols):
+def _psf_rec_func(
+    output_path, psf_data, file_ids, rows, cols, colors, use_colors
+):
     import joblib
 
-    joblib.dump(
-        [
-            psf_data[file_id].get_rec(row, col)
-            for file_id, row, col in zip(file_ids, rows, cols)
-        ],
-        output_path,
-    )
+    psfs = []
+    for file_id, row, col, color, use_color in zip(
+        file_ids, rows, cols, colors, use_colors
+    ):
+        if use_color:
+            psf = psf_data[file_id].get_rec(row, col, color=color)
+        else:
+            psf = psf_data[file_id].get_rec(row, col)
+        psfs.append(psf)
+
+    joblib.dump(psfs, output_path)
+
     return output_path
 
 
-def _sky2image_func(wcs, ra, dec, color=None):
+def _sky2image_func(wcs, ra, dec, color=None, use_color=False):
 
-    if color is not None:
-        try:
-            res = wcs.sky2image(ra, dec, color=color)
-        except TypeError:
-            res = wcs.sky2image(ra, dec)
+    if use_color:
+        res = wcs.sky2image(ra, dec, color=color)
     else:
         res = wcs.sky2image(ra, dec)
     return res
