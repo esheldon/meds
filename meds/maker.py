@@ -175,6 +175,15 @@ class MEDSMaker(dict):
             extname = self["%s_cutout_extname" % type]
             dtype = self["%s_dtype" % type]
 
+            _header = copy.deepcopy(header)
+            if (
+                self.get("fpack_seeds", {}).get(type, None) is not None
+                and _header is not None
+            ):
+                _header["ZDITHER0"] = self.get("fpack_seeds", {}).get(
+                    type, None
+                )
+
             # this reserves space for the images and header,
             # but no data is written
             fits.create_image_hdu(
@@ -182,7 +191,7 @@ class MEDSMaker(dict):
                 dtype=dtype,
                 dims=dims,
                 extname=extname,
-                header=header,
+                header=_header,
             )
 
             # now need to write the header
