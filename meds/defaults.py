@@ -1,4 +1,4 @@
-__version__ = "0.9.16"
+__version__ = "0.9.17"
 
 BMASK_EDGE = 2**30
 
